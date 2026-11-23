@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Wyjazdy – wspólne wydatki</title>
+  <meta name="description" content="Wspólne wydatki na wyjazdach w euro i złotówkach – rozliczenie na żywo.">
+  <meta name="theme-color" content="#F3F4F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E131D" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Wyjazdy">
+  <link rel="preload" href="fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="sheet-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript>Ta aplikacja wymaga włączonego JavaScriptu.</noscript>
+  <script src="vendor/qrcode.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

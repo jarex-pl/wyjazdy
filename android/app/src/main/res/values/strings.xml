@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wyjazdy</string>
+    <string name="title_activity_main">Wyjazdy</string>
+    <string name="package_name">pl.jarex.wyjazdy</string>
+    <string name="custom_url_scheme">pl.jarex.wyjazdy</string>
+    <string name="widget_balance_name">Bilans wyjazdu</string>
+    <string name="widget_balance_desc">Twój bilans, ostatnie wydatki i szybkie dodawanie</string>
+    <string name="widget_quick_name">Szybki wydatek</string>
+    <string name="widget_quick_desc">Dwa przyciski: dodaj w walucie albo w złotówkach</string>
+</resources>

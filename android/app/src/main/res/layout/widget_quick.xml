@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/quick_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_bg">
+
+    <TextView
+        android:id="@+id/quick_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Wyjazdy"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/quick_foreign"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="+ €"
+        android:textSize="22sp"
+        android:fontFamily="sans-serif-black"
+        android:textColor="#1A3FB8"
+        android:background="@drawable/widget_btn_primary" />
+
+    <TextView
+        android:id="@+id/quick_pln"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="+ zł"
+        android:textSize="22sp"
+        android:fontFamily="sans-serif-black"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/widget_btn_glass" />
+</LinearLayout>

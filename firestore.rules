@@ -1,0 +1,50 @@
+rules_version = '2';
+// Reguły bezpieczeństwa dla aplikacji Wyjazdy.
+// Wklej całość w Firebase → Firestore Database → Reguły → Opublikuj.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function tripPath(tripId) { return /databases/$(database)/documents/trips/$(tripId); }
+    function trip(tripId) { return get(tripPath(tripId)).data; }
+    function isAdminOf(tripId) {
+      return signedIn() && (
+        request.auth.uid in trip(tripId).admins ||
+        exists(/databases/$(database)/documents/trips/$(tripId)/adminClaims/$(request.auth.uid))
+      );
+    }
+    function validExpense() {
+      let d = request.resource.data;
+      return d.amount is number && d.amount > 0 && d.amount < 10000000
+        && d.currency is string && d.currency.size() <= 4
+        && d.type in ['shared', 'loan', 'transfer']
+        && d.payer is string
+        && d.desc is string && d.desc.size() <= 200;
+    }
+
+    match /trips/{tripId} {
+      // Wyjazd odczyta tylko ktoś, kto zna kod (nie da się wylistować wszystkich).
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.admins == [request.auth.uid];
+      allow update, delete: if isAdminOf(tripId);
+
+      match /expenses/{expenseId} {
+        allow read: if signedIn();
+        // Wydatki dodaje każdy uczestnik, ale tylko gdy wyjazd nie jest rozliczony.
+        allow create, update: if signedIn() && trip(tripId).status == 'open' && validExpense();
+        allow delete: if signedIn() && (trip(tripId).status == 'open' || isAdminOf(tripId));
+      }
+
+      match /private/{docId} {
+        allow read, write: if isAdminOf(tripId);
+      }
+
+      match /adminClaims/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.key == get(/databases/$(database)/documents/trips/$(tripId)/private/admin).data.key;
+      }
+    }
+  }
+}

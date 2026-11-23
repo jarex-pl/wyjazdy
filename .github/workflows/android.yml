@@ -1,0 +1,57 @@
+name: Zbuduj APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Zależności
+        run: npm ci
+
+      - name: Numer wersji
+        run: |
+          echo "VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "export const APP_BUILD = ${{ github.run_number }};" > www/js/version.js
+
+      - name: Kopiuj aplikację do projektu Android
+        run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Budowanie APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ../Wyjazdy.apk
+
+      - name: Wydanie (Releases)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.${{ github.run_number }}
+          name: Wyjazdy 1.${{ github.run_number }}
+          make_latest: true
+          body: |
+            Pobierz **Wyjazdy.apk** na telefonie z Androidem i zainstaluj.
+            Stały link do najnowszej wersji: https://github.com/${{ github.repository }}/releases/latest/download/Wyjazdy.apk
+          files: Wyjazdy.apk
