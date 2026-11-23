@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/trip_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/wbg_navy" android:clipToOutline="true">
+
+    <ImageView android:id="@+id/trip_photo" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="centerCrop" android:src="@drawable/wbg_navy" android:contentDescription="@null" />
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:src="@drawable/wshade" android:contentDescription="@null" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:padding="14dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/trip_chip" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:background="@drawable/wchip" android:paddingStart="10dp" android:paddingEnd="10dp"
+                android:paddingTop="4dp" android:paddingBottom="4dp" android:text="BIEŻĄCY WYJAZD"
+                android:textColor="#FFFFFF" android:textSize="10sp" android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.08" android:maxLines="1" />
+            <FrameLayout android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+            <TextView android:id="@+id/trip_add" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:background="@drawable/wbtn_blue_g" android:gravity="center" android:paddingStart="14dp"
+                android:paddingEnd="14dp" android:text="+ Dodaj" android:textColor="#FFFFFF" android:textSize="14sp"
+                android:fontFamily="sans-serif-black" android:maxLines="1" />
+        </LinearLayout>
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+        <TextView android:id="@+id/trip_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Wyjazdy" android:textColor="#FFFFFF" android:textSize="22sp" android:fontFamily="sans-serif"
+            android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:shadowColor="#99000000"
+            android:shadowRadius="6" android:shadowDy="1" />
+        <TextView android:id="@+id/trip_sub" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Otwórz aplikację i wybierz wyjazd" android:textColor="#DCE8FF" android:textSize="12.5sp"
+            android:maxLines="1" android:ellipsize="end" />
+
+        <LinearLayout android:id="@+id/trip_stats" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:orientation="horizontal">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:orientation="vertical" android:background="@drawable/wstat" android:padding="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wydatki"
+                    android:textColor="#BFD0F0" android:textSize="11sp" android:maxLines="1" />
+                <TextView android:id="@+id/trip_total" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="—" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="6dp" android:orientation="vertical" android:background="@drawable/wstat" android:padding="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Na osobę"
+                    android:textColor="#BFD0F0" android:textSize="11sp" android:maxLines="1" />
+                <TextView android:id="@+id/trip_per" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="—" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.15"
+                android:layout_marginStart="6dp" android:orientation="vertical" android:background="@drawable/wstat" android:padding="8dp">
+                <TextView android:id="@+id/trip_bal_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Twój bilans" android:textColor="#BFD0F0" android:textSize="11sp" android:maxLines="1" />
+                <TextView android:id="@+id/trip_bal" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="—" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

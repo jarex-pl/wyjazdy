@@ -3,7 +3,7 @@
   "appName": "Wyjazdy",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#17181B"
+    "backgroundColor": "#0A1838"
   },
   "plugins": {
     "SystemBars": { "insetsHandling": "css", "style": "DEFAULT" }

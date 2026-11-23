@@ -5,12 +5,16 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.io.File;
 
 /** Rysuje oba widżety na podstawie danych zapisanych przez aplikację. */
 public final class WidgetUpdater {
@@ -29,9 +33,17 @@ public final class WidgetUpdater {
     static final class Style { int bg, btn1, btn2, btn1Text, btn2Text, title, label, value, pos, neg, row; }
 
     static Style style(JSONObject d) {
-        String n = d != null ? d.optString("style", "dark") : "dark";
+        String n = d != null ? d.optString("style", "navy") : "navy";
         Style s = new Style();
         int white = Color.WHITE;
+        if ("navy".equals(n)) {
+            s.bg = R.drawable.wbg_navy; s.btn1 = R.drawable.wbtn_blue_g; s.btn2 = R.drawable.wbtn_navy2;
+            s.btn1Text = white; s.btn2Text = white;
+            s.title = Color.parseColor("#DCE8FF"); s.label = Color.parseColor("#BFD0F0");
+            s.value = white; s.pos = Color.parseColor("#4ADE80"); s.neg = Color.parseColor("#FCA5A5");
+            s.row = white;
+            return s;
+        }
         if ("light".equals(n)) {
             s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_accent_l; s.btn2 = R.drawable.wbtn_gray_l;
             s.btn1Text = white; s.btn2Text = Color.parseColor("#1B1C1F");
@@ -79,6 +91,51 @@ public final class WidgetUpdater {
         for (int id : quickIds) updateQuick(ctx, mgr, id);
         int[] oweIds = mgr.getAppWidgetIds(new ComponentName(ctx, OweWidget.class));
         for (int id : oweIds) updateOwe(ctx, mgr, id);
+        int[] tripIds = mgr.getAppWidgetIds(new ComponentName(ctx, TripWidget.class));
+        for (int id : tripIds) updateTrip(ctx, mgr, id);
+    }
+
+    static File photoFile(Context ctx) { return new File(ctx.getFilesDir(), "widget_photo.jpg"); }
+
+    static void updateTrip(Context ctx, AppWidgetManager mgr, int widgetId) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_trip);
+        JSONObject d = readData(ctx);
+        v.setOnClickPendingIntent(R.id.trip_root, openApp(ctx, null, 400));
+        Bitmap photo = null;
+        File f = photoFile(ctx);
+        if (d != null && f.exists()) {
+            try { photo = BitmapFactory.decodeFile(f.getAbsolutePath()); } catch (Throwable e) { photo = null; }
+        }
+        if (photo != null) v.setImageViewBitmap(R.id.trip_photo, photo);
+        else v.setImageViewResource(R.id.trip_photo, R.drawable.wbg_navy);
+        if (d == null) {
+            v.setTextViewText(R.id.trip_name, "Wyjazdy");
+            v.setTextViewText(R.id.trip_sub, "Otwórz aplikację i wybierz wyjazd");
+            v.setViewVisibility(R.id.trip_stats, View.GONE);
+            v.setViewVisibility(R.id.trip_add, View.GONE);
+            mgr.updateAppWidget(widgetId, v);
+            return;
+        }
+        boolean closed = d.optBoolean("closed", false);
+        v.setTextViewText(R.id.trip_chip, closed ? "WYJAZD ROZLICZONY" : "BIEŻĄCY WYJAZD");
+        v.setTextViewText(R.id.trip_name, d.optString("title", "Wyjazd"));
+        v.setTextViewText(R.id.trip_sub, d.optString("subtitle", ""));
+        v.setViewVisibility(R.id.trip_stats, View.VISIBLE);
+        v.setTextViewText(R.id.trip_total, d.optString("totalText", "—"));
+        v.setTextViewText(R.id.trip_per, d.optString("perPersonText", "—"));
+        v.setTextViewText(R.id.trip_bal_label, d.optString("balanceLabel", "Twój bilans"));
+        v.setTextViewText(R.id.trip_bal, d.optString("balanceText", "—"));
+        String sign = d.optString("balanceSign", "zero");
+        v.setTextColor(R.id.trip_bal, "pos".equals(sign) ? Color.parseColor("#4ADE80") : "neg".equals(sign) ? Color.parseColor("#FCA5A5") : Color.WHITE);
+        if (closed) {
+            v.setViewVisibility(R.id.trip_add, View.GONE);
+        } else {
+            String foreign = d.optString("foreign", "EUR");
+            v.setViewVisibility(R.id.trip_add, View.VISIBLE);
+            v.setTextViewText(R.id.trip_add, "PLN".equals(foreign) ? "+ Dodaj" : "+ " + d.optString("foreignSym", "€"));
+            v.setOnClickPendingIntent(R.id.trip_add, openApp(ctx, "PLN".equals(foreign) ? "PLN" : "foreign", 401));
+        }
+        mgr.updateAppWidget(widgetId, v);
     }
 
     static PendingIntent openApp(Context ctx, String add, int requestCode) {

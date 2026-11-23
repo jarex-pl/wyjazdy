@@ -4,6 +4,7 @@ import { COUNTRIES, CURRENCIES, DEFAULT_RATES, DEFAULT_CATEGORIES, sym, countryN
 import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme } from './native.js';
 import { APP_BUILD } from './version.js';
 import { artSvg, tripPhoto, findPhoto, creditHtml, fileToCoverData } from './cover.js';
+import { sceneHtml, globeLogo, showIntro } from './scene.js';
 
 const GITHUB_REPO = 'jarex-pl/wyjazdy';
 const APK_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/Wyjazdy.apk`;
@@ -67,7 +68,7 @@ const ico = {
 };
 
 // ============================================================ motyw
-function themeSetting() { return ls.get('theme', 'system'); }
+function themeSetting() { return ls.get('theme', 'dark'); }
 function resolvedTheme() {
   const t = themeSetting();
   if (t === 'light' || t === 'dark') return t;
@@ -77,7 +78,7 @@ function applyTheme() {
   const t = resolvedTheme();
   document.documentElement.dataset.theme = t;
   const m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', t === 'dark' ? '#17181B' : '#F4F4F2');
+  if (m) m.setAttribute('content', t === 'dark' ? '#0A1838' : '#EEF3FC');
   setBarsTheme(t === 'dark');
 }
 applyTheme();
@@ -115,7 +116,7 @@ const member = (id) => (S.trip?.members || []).find((m) => m.id === id);
 const mName = (id) => (id === meId() ? 'Ty' : member(id)?.name || '?');
 const mNameFull = (id) => member(id)?.name || '?';
 const foreign = () => S.trip?.currency || 'EUR';
-const HUES = { food: '#C98A5E', coffee: '#A88468', cart: '#B97C8C', fuel: '#6E93B8', bed: '#8F82B0', ticket: '#5E9E96', star: '#C2A25A', plane: '#6E93B8', bus: '#5E9E96', car: '#7F8C99', parking: '#7F8C99', other: '#8E9196', loan: '#C2A25A', transfer: '#5CC08E' };
+const HUES = { food: '#F97316', coffee: '#D97706', cart: '#8B5CF6', fuel: '#EF4444', bed: '#3B82F6', ticket: '#EC4899', star: '#CA8A04', plane: '#0EA5E9', bus: '#14B8A6', car: '#6366F1', parking: '#0D9488', other: '#64748B', loan: '#F59E0B', transfer: '#16A34A' };
 const hue = (k) => HUES[k] || HUES.other;
 function peopleLabel(t) {
   const ms = t.members || [];
@@ -138,6 +139,12 @@ function shareCells(t, total) {
 function memberTag(m) { const w = memberWeight(m); return w === 2 ? '<span class="tag">PARA</span>' : w > 2 ? `<span class="tag">${w} OS.</span>` : ''; }
 const paidVerb = (m) => (memberWeight(m) > 1 ? 'zapłacili' : 'zapłacił(a)');
 
+function forgetTrip(code) {
+  ls.set('history', ls.get('history', []).filter((x) => x.code !== code));
+  ['me:', 'thumb:', 'thumbSig:', 'lastCur:'].forEach((k) => { try { localStorage.removeItem(k + code); } catch (e) {} });
+  if (ls.get('lastTrip', null) === code) { const h = ls.get('history', []); ls.set('lastTrip', h[0] ? h[0].code : null); }
+  delete PH.res['hist:' + code];
+}
 function rememberTrip(t) {
   const h = ls.get('history', []);
   const old = h.find((x) => x.code === t.id) || {};
@@ -145,7 +152,8 @@ function rememberTrip(t) {
   const c = t.cover || {};
   const entry = {
     ...old, code: t.id, title: t.title, country: t.country, status: t.status || 'open',
-    cover: c.type === 'photo' ? { type: 'photo' } : c, people: totalWeight(t), label: peopleLabel(t)
+    cover: c.type === 'photo' ? { type: 'photo' } : c, people: totalWeight(t), label: peopleLabel(t),
+    admin: isAdmin(), currency: t.currency || 'EUR'
   };
   if (exps) {
     const bb = computeBalances(t, exps);
@@ -267,6 +275,7 @@ async function hydratePhotos() {
       } else if (key === 'welcome') p = await findPhoto('Positano', { size: 1280, langs: ['en'] });
     } catch (e) {}
     PH.res[key] = p;
+    if (key.startsWith('trip:')) scheduleWidget();
     if (p && p.src) {
       document.querySelectorAll(`[data-photo="${CSS.escape(key)}"]`).forEach((box) => {
         if (box.querySelector('img.ph')) return;
@@ -337,48 +346,91 @@ function subTop(title, extra = '') {
 }
 
 // ============================================================ ekrany
+function homeDates(h) { return h.from ? fmtDay(h.from) + (h.to && h.to !== h.from ? ' – ' + fmtDate(h.to) : '') : ''; }
+function homePeople(h) { return h.label || (h.people ? h.people + ' os.' : ''); }
+function statusPill(h) {
+  return h.status === 'closed' ? `<span class="pill ok">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 14, 3)} Rozliczony</span>`
+    : (h.my != null && h.my < -0.009) ? '<span class="pill warn">Do oddania</span>' : '<span class="pill blue">W trakcie</span>';
+}
+function tripCard(h, i) {
+  const meta = [homeDates(h), homePeople(h)].filter(Boolean);
+  return `
+  <div class="tcard" style="animation-delay:${Math.min(i, 6) * 60}ms">
+    <a class="tc-link" href="#/t/${esc(h.code)}">
+      ${photoBox('hist:' + h.code, h.country, 'tc-ph')}</div>
+      <span class="tc-body">
+        <span class="tc-name">${flagImg(h.country)}<b>${esc(h.title)}</b></span>
+        ${meta[0] ? `<span class="tc-meta">${ico.cal}${esc(meta[0])}</span>` : ''}
+        ${meta[1] ? `<span class="tc-meta">${ico.users}${esc(meta[1])}</span>` : ''}
+        <b class="tc-amt">${h.total != null ? fmt(h.total) + ' zł' : '—'}</b>
+        ${statusPill(h)}
+      </span>
+    </a>
+    <button class="tc-more" data-act="trip-menu" data-code="${esc(h.code)}" aria-label="Opcje wyjazdu ${esc(h.title)}">${ico.dots}</button>
+  </div>`;
+}
 function viewHome() {
   const hist = ls.get('history', []);
   if (!hist.length) return viewWelcome();
   const upd = S.update;
-  const [cur, ...rest] = hist;
-  const dates = (h) => (h.from ? fmtDay(h.from) + (h.to && h.to !== h.from ? ' – ' + fmtDay(h.to) : '') : '');
-  const ppl = (h) => h.label || (h.people ? h.people + ' os.' : '');
+  const f = S.homeFilter || 'all';
+  const cur = hist[0];
+  const list = hist.filter((h) => f === 'all' || (f === 'open' ? h.status !== 'closed' : h.status === 'closed'));
+  const tab = (k, label) => `<button class="${f === k ? 'on' : ''}" data-act="home-filter" data-v="${k}" aria-pressed="${f === k}">${label}</button>`;
   return `
-  <main class="start nav-pad">
-    ${photoBox('hist:' + cur.code, cur.country, 'shero')}<div class="shade"></div>
-      <div class="sbar"><span class="brand">${ico.logo}Wyjazdy</span><span class="sp"></span><a class="ibtn onphoto" href="#/new" aria-label="Nowy wyjazd">${ico.plus}</a></div>
-      <a class="sinfo" href="#/t/${esc(cur.code)}"><span class="eyebrow">${esc(countryName(cur.country) || '')}${dates(cur) ? ' · ' + dates(cur) : ''}${cur.status === 'closed' ? ' · rozliczony' : ''}</span><h1>${esc(cur.title)}</h1><span class="sm">${esc(ppl(cur))}</span></a>
-    </div>
-    <div class="start-in">
-      ${upd ? `<div class="banner info"><span class="grow"><b>Nowa wersja ${esc(upd)}</b><br>Pobierz i zainstaluj na starej.</span><a class="btn primary sm" href="${APK_URL}" target="_blank" rel="noopener">Pobierz</a></div>` : ''}
-      ${store.mode === 'demo' ? `<div class="banner warn">Tryb demo – dane tylko na tym urządzeniu.</div>` : ''}
-      <a class="sstats" href="#/t/${esc(cur.code)}/settle">
-        <div><span>Twój bilans</span><b class="${cur.my > 0.009 ? 'pos-t' : cur.my < -0.009 ? 'neg-t' : ''}">${cur.my != null ? signed(cur.my) + ' zł' : '—'}</b></div>
-        <div><span>Wydatki razem</span><b>${cur.total != null ? fmt0(cur.total) + ' zł' : '—'}</b></div>
+  <main class="page home nav-pad">
+    <header class="topbar hhead"><span class="brand">${globeLogo(38)}<b>Wyjazdy</b></span><span class="grow"></span>
+      <a class="ibtn" href="#/new" aria-label="Nowy wyjazd">${ico.plus}</a></header>
+    ${upd ? `<div class="banner info"><span class="grow"><b>Nowa wersja ${esc(upd)}</b><br>Pobierz i zainstaluj na starej.</span><a class="btn primary sm" href="${APK_URL}" target="_blank" rel="noopener">Pobierz</a></div>` : ''}
+    ${store.mode === 'demo' ? `<div class="banner warn">Tryb demo – dane tylko na tym urządzeniu.</div>` : ''}
+    <section class="feat">
+      <a class="feat-top" href="#/t/${esc(cur.code)}">
+        ${photoBox('hist:' + cur.code, cur.country, 'feat-ph')}<div class="shade"></div>
+          <span class="feat-tag">${cur.status === 'closed' ? 'Ostatni wyjazd' : 'Bieżący wyjazd'}</span>
+          <svg class="feat-plane" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z" fill="#fff" transform="rotate(90 12 12)"/></svg>
+          <span class="feat-in"><span class="feat-name">${flagImg(cur.country)}<b>${esc(cur.title)}</b></span>
+            <span class="feat-sub">${esc([countryName(cur.country), homeDates(cur), homePeople(cur)].filter(Boolean).join(' · '))}</span></span>
+        </div>
+      </a>
+      <a class="feat-stats" href="#/t/${esc(cur.code)}/settle">
+        <span><small>Twój bilans</small><b class="${cur.my > 0.009 ? 'pos-t' : cur.my < -0.009 ? 'neg-t' : ''}">${cur.my != null ? (cur.my > 0.5 ? '+' : cur.my < -0.5 ? '−' : '') + fmt0(Math.abs(cur.my)) + ' zł' : '—'}</b></span>
+        <span><small>Wydatki</small><b>${cur.total != null ? fmt0(cur.total) + ' zł' : '—'}</b></span>
+        <span><small>Na osobę</small><b>${cur.total != null && cur.people ? fmt0(cur.total / cur.people) + ' zł' : '—'}</b></span>
       </a>
       <a class="btn primary big" href="#/t/${esc(cur.code)}">${cur.status === 'closed' ? 'Otwórz wyjazd' : `${ico.plus} Dodaj wydatek`}</a>
-      ${rest.length ? `<div class="sec-title">Inne wyjazdy</div>
-      <div class="list">${rest.map((h) => `
-        <a class="trow" href="#/t/${esc(h.code)}">${photoBox('hist:' + h.code, h.country)}</div>
-          <span class="grow"><b>${esc(h.title)}</b><span>${[dates(h), h.status === 'closed' ? 'rozliczony' : 'w trakcie'].filter(Boolean).join(' · ')}</span></span>
-          <span class="tt">${h.total != null ? fmt0(h.total) + ' zł' : ''}</span></a>`).join('')}</div>` : ''}
-      <a class="btn" href="#/new">${ico.plus} Nowy wyjazd</a>
-      <section class="card">
-        <label class="field-label" for="join-code" style="margin:0">Dołącz do wyjazdu znajomego</label>
-        <div class="row"><input id="join-code" class="input code" placeholder="WYJ-XXXXXX" autocomplete="off" autocapitalize="characters" enterkeyhint="go">
-          <button class="btn primary" style="flex:none" data-act="join">Dołącz</button></div>
-      </section>
-    </div>
+    </section>
+    <div class="sec-title">Moje wyjazdy <span class="muted small">${hist.length}</span></div>
+    <div class="seg" role="group" aria-label="Filtr wyjazdów">${tab('all', 'Wszystkie')}${tab('open', 'W trakcie')}${tab('closed', 'Rozliczone')}</div>
+    <div class="tcards">${list.length ? list.map(tripCard).join('') : '<div class="empty">Brak wyjazdów w tej grupie.</div>'}</div>
+    <p class="hint">Stuknij „⋯” przy wyjeździe, żeby go usunąć</p>
+    <a class="btn outline" href="#/new">${ico.plus} Nowy wyjazd</a>
+    <section class="card">
+      <label class="field-label" for="join-code" style="margin:0">Dołącz do wyjazdu znajomego</label>
+      <div class="row"><input id="join-code" class="input code" placeholder="WYJ-XXXXXX" autocomplete="off" autocapitalize="characters" enterkeyhint="go">
+        <button class="btn primary" style="flex:none" data-act="join">Dołącz</button></div>
+    </section>
   </main>${navbar('home')}`;
+}
+function renderTripMenu(code) {
+  const h = ls.get('history', []).find((x) => x.code === code);
+  if (!h) return;
+  $('#picker-root').innerHTML = `<div class="overlay" data-act="tm-close"></div>
+  <div class="picker tmenu" role="dialog" aria-modal="true" aria-label="${esc(h.title)}"><div class="grip"></div>
+    <div class="tm-head">${photoBox('hist:' + h.code, h.country, 'tm-ph')}</div><span class="grow"><b>${esc(h.title)}</b><span>${esc([countryName(h.country), homeDates(h)].filter(Boolean).join(' · '))}</span></span></div>
+    <a class="opt" href="#/t/${esc(h.code)}" data-act="tm-close-nav">${ico.chev}<span class="grow"><b>Otwórz wyjazd</b><span>Wydatki, rozliczenie, osoby</span></span></a>
+    <button class="opt" data-act="forget" data-code="${esc(h.code)}">${ico.close}<span class="grow"><b>Usuń z mojej listy</b><span>Znika tylko u Ciebie – inni dalej go widzą</span></span></button>
+    ${h.admin !== false ? `<button class="opt danger" data-act="delete-trip-home" data-code="${esc(h.code)}">${ico.trash}<span class="grow"><b>Usuń cały wyjazd</b><span>U wszystkich uczestników, razem z wydatkami</span></span></button>` : ''}
+    <button class="btn" data-act="tm-close">Anuluj</button>
+  </div>`;
+  hydratePhotos();
 }
 
 function viewWelcome() {
   return `
   <main class="welcome">
-    ${photoBox('welcome', 'it')}</div><div class="shade"></div>
+    ${sceneHtml()}
     <div class="inner">
-      <img class="logo" src="icons/icon-512.png" alt="">
+      ${globeLogo(124)}
       <h1>Wy<span>jazdy</span></h1>
       <p>Wspólne wyjazdy,<br>proste rozliczenia</p>
       <div style="flex:1"></div>
@@ -743,7 +795,7 @@ function reportData() {
     cats[k].sum += toPLN(e, t.rate); cats[k].n++;
   });
   const list = Object.values(cats).sort((a, c) => c.sum - a.sum);
-  const palette = ['#5B8DEF', '#C98A5E', '#5E9E96', '#B97C8C', '#8F82B0', '#C2A25A', '#A88468', '#7F8C99', '#6B8578', '#96707A'];
+  const palette = ['#3B82F6', '#F97316', '#EC4899', '#8B5CF6', '#14B8A6', '#EAB308', '#EF4444', '#22C55E', '#0EA5E9', '#64748B'];
   list.forEach((c, i) => { c.color = palette[i % palette.length]; });
   return { b, list };
 }
@@ -803,10 +855,10 @@ function viewReportsNav() {
 }
 
 // ------------------------------------------------------------ ustawienia (globalne)
-const WSTYLES = [['dark', 'Grafit'], ['light', 'Jasny'], ['clear', 'Szkło'], ['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód']];
+const WSTYLES = [['navy', 'Granat'], ['dark', 'Grafit'], ['light', 'Jasny'], ['clear', 'Szkło'], ['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód']];
 function viewSettings() {
   const th = themeSetting();
-  const ws = ls.get('wstyle', 'dark');
+  const ws = ls.get('wstyle', 'navy');
   const last = ls.get('lastTrip', null);
   return `
   <main class="page nav-pad">
@@ -1154,6 +1206,12 @@ function oweData(b, me) {
   if (fromMe.length) { const [a, ...r] = fromMe; return { title: 'Ty oddajesz', who: mNameFull(a.to), amount: money(a.amount, 'PLN'), sign: 'neg', extra: r.map((x) => '+ ' + money(x.amount, 'PLN') + ' · ' + mNameFull(x.to)).join('\n') }; }
   return { title: 'Rozliczenie', who: 'Wszyscy na zero', amount: '', sign: 'zero', extra: '' };
 }
+function widgetPhoto(t) {
+  const c = t.cover || {};
+  if (c.type === 'photo') { const th = ls.get('thumb:' + t.id, null); return th ? { photoKey: 'own:' + t.id + ':' + (c.data ? c.data.length : 0), photoData: th.replace(/^data:image\/\w+;base64,/, '') } : {}; }
+  const p = PH.res['trip:' + t.id + ':' + coverSig(t)];
+  return p && p.src && /^https:/.test(p.src) ? { photoKey: p.src, photoUrl: p.src.replace(/\/\d+px-/, '/640px-') } : {};
+}
 function pushWidget() {
   const t = S.trip;
   if (!t) return;
@@ -1164,13 +1222,16 @@ function pushWidget() {
     .sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)).slice(0, 3)
     .map((e) => ({ t: `${e.desc || e.category || 'Wydatek'} · ${mNameFull(e.payer)}`, a: money(e.amount, e.currency) }));
   S.widgetData = {
-    style: ls.get('wstyle', 'dark'), code: t.id, title: t.title, closed: t.status === 'closed',
+    style: ls.get('wstyle', 'navy'), code: t.id, title: t.title, closed: t.status === 'closed',
     foreign: foreign(), foreignSym: sym(foreign()),
     balanceLabel: me ? 'Twój bilans' : 'Koszt wyjazdu',
     balanceText: me ? signed(bal) + ' zł' : fmt(b.total) + ' zł',
     balanceSign: me ? (bal > 0.009 ? 'pos' : bal < -0.009 ? 'neg' : 'zero') : 'zero',
     balanceHint: me ? (bal > 0.009 ? 'Inni oddadzą Ci tę kwotę' : bal < -0.009 ? 'Tyle musisz oddać' : 'Jesteś na zero') : '',
-    recent, owe: oweData(b, me)
+    recent, owe: oweData(b, me),
+    totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
+    subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
+    count: S.expenses.length, ...widgetPhoto(t)
   };
   updateWidget(S.widgetData);
 }
@@ -1289,7 +1350,33 @@ async function fetchNbp(cur) {
 const actions = {
   join: () => joinCode($('#join-code')?.value),
   'join-open': () => { S.joinOpen = true; render(); $('#join-code')?.focus(); },
-  forget: (el) => { ls.set('history', ls.get('history', []).filter((x) => x.code !== el.dataset.code)); go('#/'); },
+  forget: (el) => {
+    const code = el.dataset.code;
+    const h = ls.get('history', []).find((x) => x.code === code);
+    if (!confirm(`Usunąć „${h ? h.title : code}” z Twojej listy?\n\nWyjazd zostanie u pozostałych uczestników. Wrócisz do niego, wpisując kod ${code}.`)) return;
+    if (S.watching === code) stopWatching();
+    forgetTrip(code); closePicker(); go('#/'); toast('Usunięto z listy');
+  },
+  'home-filter': (el) => { S.homeFilter = el.dataset.v; render(); },
+  'trip-menu': (el) => renderTripMenu(el.dataset.code),
+  'tm-close': () => closePicker(),
+  'tm-close-nav': (el) => { closePicker(); go(el.getAttribute('href')); },
+  'delete-trip-home': async (el) => {
+    const code = el.dataset.code;
+    const h = ls.get('history', []).find((x) => x.code === code);
+    if (!confirm(`Usunąć CAŁY wyjazd „${h ? h.title : code}” u wszystkich uczestników, razem z wydatkami?\n\nTego nie da się cofnąć.`)) return;
+    if ((prompt('Wpisz USUŃ, żeby potwierdzić') || '').trim().toUpperCase() !== 'USUŃ') return;
+    closePicker();
+    try {
+      if (S.watching === code) stopWatching();
+      await store.deleteTrip(code);
+      forgetTrip(code); go('#/'); render(); toast('Wyjazd usunięty');
+    } catch (e) {
+      const m = String(e && (e.code || e.message) || e);
+      if (m.includes('permission')) toast('Cały wyjazd usuwa tylko organizator. Możesz usunąć go ze swojej listy.', 4500);
+      else fail(e);
+    }
+  },
   'toggle-theme': () => { ls.set('theme', resolvedTheme() === 'dark' ? 'light' : 'dark'); applyTheme(); render(); },
   theme: (el) => { ls.set('theme', el.dataset.v); applyTheme(); render(); },
   wstyle: (el) => {
@@ -1429,7 +1516,7 @@ const actions = {
     if (!confirm('Usunąć CAŁY wyjazd u wszystkich uczestników? Tego nie da się cofnąć.')) return;
     if ((prompt('Wpisz USUŃ, żeby potwierdzić') || '').trim().toUpperCase() !== 'USUŃ') return;
     const code = S.trip.id;
-    try { stopWatching(); await store.deleteTrip(code); ls.set('history', ls.get('history', []).filter((x) => x.code !== code)); go('#/'); toast('Wyjazd usunięty'); }
+    try { stopWatching(); await store.deleteTrip(code); forgetTrip(code); go('#/'); toast('Wyjazd usunięty'); }
     catch (e) { fail(e); watch(code); }
   },
   'cover-auto': () => setCover({ type: 'place', query: ($('#cv-place')?.value || '').trim() }),
@@ -1589,6 +1676,7 @@ document.addEventListener('touchend', (e) => {
 
 // ============================================================ start
 async function boot() {
+  const hideIntro = showIntro();
   $('#app').innerHTML = '<main class="page center-page"><div class="spinner"></div></main>';
   try { S.uid = await store.init(); }
   catch (e) {
@@ -1599,9 +1687,10 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   const join = params.get('join'), add = params.get('add');
   if (join || add) history.replaceState(null, '', location.pathname + location.hash);
-  if (join) { await joinCode(join); onRoute(); return; }
+  if (join) { await joinCode(join); onRoute(); hideIntro(); return; }
   if (add) { const last = ls.get('lastTrip', null); if (last) { S.pendingAdd = add === 'PLN' ? 'PLN' : 'foreign'; location.hash = '#/t/' + last; } }
   onRoute();
+  hideIntro();
   handleWidgetAction();
 }
 boot();
@@ -1623,6 +1712,7 @@ onBackButton(() => {
   if (S.msheet) { S.msheet = null; closePicker(); return; }
   if (S.picker) { closePicker(); renderAdd(); return; }
   if (S.add) { closeAdd(); return; }
+  if ($('#picker-root')?.innerHTML) { closePicker(); return; }
   const r = S.route;
   if (r.name === 'trip' && r.sub) { go('#/t/' + r.code); return; }
   if (r.name !== 'home') { go('#/'); return; }

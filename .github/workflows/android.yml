@@ -41,7 +41,15 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          set +e
+          ./gradlew assembleRelease --no-daemon --stacktrace > build.log 2>&1
+          st=$?
+          tail -60 build.log
+          if [ $st -ne 0 ]; then
+            grep -E "error:|ERROR:|e: |What went wrong" -A2 build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            exit $st
+          fi
+          set -e
           cp app/build/outputs/apk/release/app-release.apk ../Wyjazdy.apk
 
       - name: Wydanie (Releases)

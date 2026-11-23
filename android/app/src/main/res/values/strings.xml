@@ -10,4 +10,6 @@
     <string name="widget_quick_desc">Dwa przyciski: dodaj w walucie albo w złotówkach</string>
     <string name="widget_owe_name">Do oddania</string>
     <string name="widget_owe_desc">Kto komu oddaje pieniądze</string>
+    <string name="widget_trip_name">Wyjazd ze zdjęciem</string>
+    <string name="widget_trip_desc">Zdjęcie miejsca, wydatki, koszt na osobę i Twój bilans</string>
 </resources>
