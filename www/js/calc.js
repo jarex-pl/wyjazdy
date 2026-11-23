@@ -30,7 +30,20 @@ export function computeBalances(trip, expenses, opts = {}) {
     const amt = cur ? e.amount : toPLN(e, trip.rate || 1);
     if (!(amt > 0) || !ids.has(e.payer)) continue;
     const type = e.type || 'shared';
-    if (type === 'shared') {
+    if (type === 'shared' && e.shares && typeof e.shares === 'object') {
+      // podział indywidualny: kwoty wpisane ręcznie dla każdej osoby
+      const entries = Object.entries(e.shares).filter(([id, v]) => ids.has(id) && Number(v) > 0);
+      const sum = entries.reduce((s, [, v]) => s + Number(v), 0);
+      if (!sum) continue;
+      total += amt;
+      paid[e.payer] += amt;
+      balance[e.payer] += amt;
+      for (const [id, v] of entries) {
+        const s = (amt * Number(v)) / sum;
+        share[id] += s;
+        balance[id] -= s;
+      }
+    } else if (type === 'shared') {
       let among = (Array.isArray(e.splitAmong) && e.splitAmong.length ? e.splitAmong : members.map((m) => m.id))
         .filter((id) => ids.has(id));
       if (!among.length) among = members.map((m) => m.id);

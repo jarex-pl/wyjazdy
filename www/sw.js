@@ -1,10 +1,10 @@
 // Service worker: aplikacja otwiera się też bez internetu.
 // Po każdej zmianie plików aplikacji podbij numer wersji poniżej.
-const VERSION = 'wyjazdy-v4';
+const VERSION = 'wyjazdy-v5';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/store.js', 'js/calc.js', 'js/data.js', 'js/config.js', 'js/native.js', 'js/version.js', 'js/cover.js',
-  'fonts/manrope-latin-wght-normal.woff2', 'fonts/manrope-latin-ext-wght-normal.woff2', 'fonts/bricolage-grotesque-latin-wght-normal.woff2', 'fonts/bricolage-grotesque-latin-ext-wght-normal.woff2', 'vendor/capacitor.js',
+  'fonts/inter-latin-wght-normal.woff2', 'fonts/inter-latin-ext-wght-normal.woff2', 'vendor/capacitor.js',
   'vendor/firebase.js', 'vendor/qrcode.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png'
 ];

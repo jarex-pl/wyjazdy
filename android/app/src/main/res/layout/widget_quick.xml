@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="@drawable/widget_bg">
+    android:background="@drawable/wbg_blue">
 
     <TextView
         android:id="@+id/quick_title"
@@ -28,8 +28,8 @@
         android:text="+ €"
         android:textSize="22sp"
         android:fontFamily="sans-serif-black"
-        android:textColor="#1A3FB8"
-        android:background="@drawable/widget_btn_primary" />
+        android:textColor="#1554E8"
+        android:background="@drawable/wbtn_white" />
 
     <TextView
         android:id="@+id/quick_pln"
@@ -42,5 +42,5 @@
         android:textSize="22sp"
         android:fontFamily="sans-serif-black"
         android:textColor="#FFFFFF"
-        android:background="@drawable/widget_btn_glass" />
+        android:background="@drawable/wbtn_glass" />
 </LinearLayout>

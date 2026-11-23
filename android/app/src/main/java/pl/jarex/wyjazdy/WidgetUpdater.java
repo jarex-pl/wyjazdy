@@ -25,6 +25,38 @@ public final class WidgetUpdater {
 
     private WidgetUpdater() {}
 
+    /** Kolory i tła dla jednego stylu widżetu (wybór w Ustawieniach aplikacji). */
+    static final class Style { int bg, btn1, btn2, btn1Text, btn2Text, title, label, value, pos, neg, row; }
+
+    static Style style(JSONObject d) {
+        String n = d != null ? d.optString("style", "blue") : "blue";
+        Style s = new Style();
+        int white = Color.WHITE;
+        if ("light".equals(n)) {
+            s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_blue; s.btn2 = R.drawable.wbtn_lightgray;
+            s.btn1Text = white; s.btn2Text = Color.parseColor("#0D1B3D");
+            s.title = Color.parseColor("#34456B"); s.label = Color.parseColor("#5B6B8C");
+            s.value = Color.parseColor("#0D1B3D"); s.pos = Color.parseColor("#0E9F6E"); s.neg = Color.parseColor("#E5484D");
+            s.row = Color.parseColor("#0D1B3D");
+            return s;
+        }
+        s.btn1 = R.drawable.wbtn_white; s.btn2 = R.drawable.wbtn_glass; s.btn2Text = white;
+        switch (n) {
+            case "dark": s.bg = R.drawable.wbg_dark; s.btn1 = R.drawable.wbtn_blue; s.btn2 = R.drawable.wbtn_darkgray; s.btn1Text = white; break;
+            case "clear": s.bg = R.drawable.wbg_clear; s.btn1Text = Color.parseColor("#1554E8"); break;
+            case "violet": s.bg = R.drawable.wbg_violet; s.btn1Text = Color.parseColor("#5B2FD6"); break;
+            case "teal": s.bg = R.drawable.wbg_teal; s.btn1Text = Color.parseColor("#0E7C6E"); break;
+            case "sunset": s.bg = R.drawable.wbg_sunset; s.btn1Text = Color.parseColor("#D6455D"); break;
+            default: s.bg = R.drawable.wbg_blue; s.btn1Text = Color.parseColor("#1554E8");
+        }
+        s.title = Color.parseColor("#E6EEFF"); s.label = Color.parseColor("#D2DDF7");
+        s.value = white; s.pos = Color.parseColor("#B8FFE0"); s.neg = Color.parseColor("#FFD2CC"); s.row = white;
+        return s;
+    }
+
+    private static void bg(RemoteViews v, int id, int res) { v.setInt(id, "setBackgroundResource", res); }
+
+
     static JSONObject readData(Context ctx) {
         String raw = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_DATA, null);
         if (raw == null) return null;
@@ -53,6 +85,15 @@ public final class WidgetUpdater {
     static void updateBalance(Context ctx, AppWidgetManager mgr, int widgetId) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_balance);
         JSONObject d = readData(ctx);
+        Style st = style(d);
+        bg(v, R.id.widget_root, st.bg);
+        bg(v, R.id.btn_foreign, st.btn1); v.setTextColor(R.id.btn_foreign, st.btn1Text);
+        bg(v, R.id.btn_pln, st.btn2); v.setTextColor(R.id.btn_pln, st.btn2Text);
+        v.setTextColor(R.id.trip_title, st.title);
+        v.setTextColor(R.id.balance_label, st.label);
+        v.setTextColor(R.id.balance_hint, st.label);
+        v.setTextColor(R.id.balance_value, st.value);
+        for (int i = 0; i < ROW_IDS.length; i++) { v.setTextColor(ROW_TITLE[i], st.row); v.setTextColor(ROW_AMOUNT[i], st.row); }
         v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, null, 100));
         if (d == null) {
             v.setTextViewText(R.id.trip_title, "Wyjazdy");
@@ -69,7 +110,7 @@ public final class WidgetUpdater {
         v.setTextViewText(R.id.balance_label, d.optString("balanceLabel", "Twój bilans"));
         v.setTextViewText(R.id.balance_value, d.optString("balanceText", "0,00 zł"));
         String sign = d.optString("balanceSign", "zero");
-        int color = "pos".equals(sign) ? Color.parseColor("#1F45C8") : "neg".equals(sign) ? Color.parseColor("#B5520E") : Color.parseColor("#1B1F2A");
+        int color = "pos".equals(sign) ? st.pos : "neg".equals(sign) ? st.neg : st.value;
         v.setTextColor(R.id.balance_value, color);
         v.setTextViewText(R.id.balance_hint, d.optString("balanceHint", ""));
 
@@ -103,6 +144,12 @@ public final class WidgetUpdater {
     static void updateOwe(Context ctx, AppWidgetManager mgr, int widgetId) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_owe);
         JSONObject d = readData(ctx);
+        Style st = style(d);
+        bg(v, R.id.owe_root, st.bg);
+        v.setTextColor(R.id.owe_title, st.title);
+        v.setTextColor(R.id.owe_who, st.row);
+        v.setTextColor(R.id.owe_amount, st.value);
+        v.setTextColor(R.id.owe_extra, st.label);
         JSONObject o = d != null ? d.optJSONObject("owe") : null;
         v.setOnClickPendingIntent(R.id.owe_root, openApp(ctx, null, 300));
         if (o == null) {
@@ -115,7 +162,7 @@ public final class WidgetUpdater {
             v.setTextViewText(R.id.owe_who, o.optString("who", ""));
             v.setTextViewText(R.id.owe_amount, o.optString("amount", ""));
             String sign = o.optString("sign", "zero");
-            v.setTextColor(R.id.owe_amount, "neg".equals(sign) ? Color.parseColor("#B5520E") : Color.parseColor("#1F45C8"));
+            v.setTextColor(R.id.owe_amount, "neg".equals(sign) ? st.neg : "pos".equals(sign) ? st.pos : st.value);
             v.setTextViewText(R.id.owe_extra, o.optString("extra", ""));
         }
         mgr.updateAppWidget(widgetId, v);
@@ -124,6 +171,11 @@ public final class WidgetUpdater {
     static void updateQuick(Context ctx, AppWidgetManager mgr, int widgetId) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_quick);
         JSONObject d = readData(ctx);
+        Style st = style(d);
+        bg(v, R.id.quick_root, st.bg);
+        bg(v, R.id.quick_foreign, st.btn1); v.setTextColor(R.id.quick_foreign, st.btn1Text);
+        bg(v, R.id.quick_pln, st.btn2); v.setTextColor(R.id.quick_pln, st.btn2Text);
+        v.setTextColor(R.id.quick_title, st.title);
         String foreign = d != null ? d.optString("foreign", "EUR") : "EUR";
         String foreignSym = d != null ? d.optString("foreignSym", "€") : "€";
         v.setTextViewText(R.id.quick_title, d != null ? d.optString("title", "Wyjazdy") : "Wyjazdy");

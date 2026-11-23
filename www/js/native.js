@@ -33,3 +33,12 @@ export function onResume(fn) {
 export function exitApp() {
   if (isNative) App.exitApp();
 }
+
+/** Kolor ikon paska statusu i nawigacji Androida zgodny z motywem aplikacji. */
+export async function setBarsTheme(dark) {
+  if (!isNative) return;
+  try {
+    const { SystemBars, SystemBarsStyle } = await import('../vendor/capacitor.js');
+    await SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light });
+  } catch (e) {}
+}
