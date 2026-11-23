@@ -1,6 +1,6 @@
 import { createStore, newId } from './store.js';
 import { computeBalances, settle, toPLN, round2, totalWeight, memberWeight } from './calc.js';
-import { COUNTRIES, CURRENCIES, DEFAULT_RATES, DEFAULT_CATEGORIES, sym, countryName, countryCurrency, iconKey, iconSvg, iconBg, iconColor } from './data.js';
+import { COUNTRIES, CURRENCIES, DEFAULT_RATES, DEFAULT_CATEGORIES, allCategories, sym, countryName, countryCurrency, iconKey, iconSvg, iconBg, iconColor } from './data.js';
 import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme, setWidgetLead, removeWidgetTrip, takeWidgetQueue } from './native.js';
 import { APP_BUILD } from './version.js';
 import { firebaseConfig } from './config.js';
@@ -120,7 +120,7 @@ const mName = (id) => (id === meId() ? 'Ty' : member(id)?.name || '?');
 const mNameFull = (id) => member(id)?.name || '?';
 const foreign = () => S.trip?.currency || 'EUR';
 const HUES = { food: '#F97316', coffee: '#D97706', cart: '#8B5CF6', fuel: '#EF4444', bed: '#3B82F6', ticket: '#EC4899', star: '#CA8A04', plane: '#0EA5E9', bus: '#14B8A6', car: '#6366F1', parking: '#0D9488', other: '#64748B', loan: '#F59E0B', transfer: '#16A34A' };
-const hue = (k) => HUES[k] || HUES.other;
+const hue = (k) => HUES[k] || iconColor(k);
 function peopleLabel(t) {
   const ms = t.members || [];
   const pairs = ms.filter((m) => memberWeight(m) === 2).length;
@@ -252,6 +252,7 @@ function render() {
     if (el) { el.value = keep.v; el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch (e) {} }
   }
   if (r.name === 'trip' && r.sub === 'people') drawQr();
+  drawQrs();
   if (S.msheet) renderMemberSheet();
   if (S.trip) scheduleWidget();
   hydratePhotos();
@@ -920,6 +921,17 @@ function viewSettings() {
   return `
   <main class="page nav-pad">
     <header class="topbar left"><h1>Ustawienia</h1></header>
+    <div class="label">Pobierz aplikację – zeskanuj aparatem</div>
+    <section class="card qrcard">
+      <div class="qr2">
+        <div class="qrt"><div class="qr" data-qr="${esc(APK_URL)}" role="img" aria-label="Kod QR – aplikacja na Androida"></div>
+          <b>Android</b><span>plik APK do instalacji</span>
+          <button class="btn sm" data-act="share-url" data-url="${esc(APK_URL)}" data-title="Wyjazdy – Android">${ico.share} Wyślij</button></div>
+        <div class="qrt"><div class="qr" data-qr="${esc(WEB_URL)}" role="img" aria-label="Kod QR – strona dla iPhone"></div>
+          <b>iPhone</b><span>otwórz w Safari i dodaj do ekranu</span>
+          <button class="btn sm" data-act="share-url" data-url="${esc(WEB_URL)}" data-title="Wyjazdy – iPhone">${ico.share} Wyślij</button></div>
+      </div>
+    </section>
     <div class="label">Motyw aplikacji</div>
     <div class="seg">
       <button class="${th === 'system' ? 'on' : ''}" data-act="theme" data-v="system">Systemowy</button>
@@ -1049,6 +1061,13 @@ function viewEdit() {
   </main>`;
 }
 function inviteUrl() { return (isNative ? WEB_URL : location.origin + location.pathname) + '?join=' + encodeURIComponent(S.trip.id); }
+function drawQrs() {
+  if (typeof window.qrcode !== 'function') return;
+  document.querySelectorAll('[data-qr]').forEach((el) => {
+    if (el.firstChild) return;
+    try { const qr = window.qrcode(0, 'M'); qr.addData(el.dataset.qr); qr.make(); el.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0, scalable: true }); } catch (e) {}
+  });
+}
 function drawQr() {
   const el = $('#qr');
   if (!el || typeof window.qrcode !== 'function') return;
@@ -1114,7 +1133,9 @@ function renderAdd() {
   const a = S.add;
   if (!a) return;
   const t = S.trip, me = meId();
-  const cats = t.categories && t.categories.length ? t.categories : DEFAULT_CATEGORIES;
+  const all = allCategories(t);
+  const cats = all.slice(0, 8);
+  if (a.category && !cats.includes(a.category)) cats.unshift(a.category);
   const typing = document.activeElement && document.activeElement.id === 'add-desc';
   document.body.classList.add('no-scroll');
   $('#sheet-root').innerHTML = `
@@ -1132,7 +1153,7 @@ function renderAdd() {
         <div class="amount ${amountClass()}" id="add-amount">${amountText()}<span class="caret"></span><small>${esc(sym(a.currency))}</small></div>
         <div class="conv" id="add-conv">${convText()}</div>
       </button>
-      ${a.split !== 'transfer' ? `<div class="cats">${cats.map((c) => `<button class="cat ${a.category === c ? 'on' : ''}" data-act="add-cat" data-v="${esc(c)}">${iconSvg(iconKey({ category: c }), 18, 'currentColor')}${esc(c)}</button>`).join('')}</div>` : ''}
+      ${a.split !== 'transfer' ? `<div class="cats">${cats.map((c) => `<button class="cat ${a.category === c ? 'on' : ''}" data-act="add-cat" data-v="${esc(c)}" style="--h:${hue(iconKey({ category: c }))}">${iconSvg(iconKey({ category: c }), 18, 'currentColor')}${esc(c)}</button>`).join('')}<button class="cat more" data-act="pick" data-v="cat">${ico.dots} Więcej (${all.length})</button></div>` : ''}
       <input id="add-desc" class="input" placeholder="${a.split === 'transfer' ? 'Opis (opcjonalnie)' : 'Opis, np. kolacja w trattorii'}" value="${esc(a.desc)}" data-change="add-desc" list="add-sugg" enterkeyhint="done" autocomplete="off">
       <datalist id="add-sugg">${Array.from(new Set(S.expenses.map((e) => e.desc).filter(Boolean))).slice(0, 40).map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
       <div class="flabel">${a.split === 'transfer' ? 'Kto oddał?' : 'Kto zapłacił?'}</div>
@@ -1217,8 +1238,8 @@ function renderPicker() {
   const ms = t.members;
   let inner = '';
   if (S.picker === 'cat') {
-    const cats = t.categories && t.categories.length ? t.categories : DEFAULT_CATEGORIES;
-    inner = `<h3>Kategoria</h3><div class="catgrid">${cats.map((c) => { const k = iconKey({ category: c }); return `<button class="${a.category === c ? 'on' : ''}" data-act="pk-cat" data-v="${esc(c)}"><span class="ci" style="background:${iconBg(k)}">${iconSvg(k, 24)}</span>${esc(c)}</button>`; }).join('')}</div>`;
+    const cats = allCategories(t);
+    inner = `<h3>Za co płacisz?</h3><div class="catgrid">${cats.map((c) => { const k = iconKey({ category: c }); return `<button class="${a.category === c ? 'on' : ''}" data-act="pk-cat" data-v="${esc(c)}"><span class="ci" style="--h:${hue(k)}">${iconSvg(k, 24, '#fff')}</span>${esc(c)}</button>`; }).join('')}</div>`;
   } else if (S.picker === 'payer') {
     inner = `<h3>Kto zapłacił?</h3>${ms.map((m) => `<button class="opt ${a.payer === m.id ? 'on' : ''}" data-act="pk-payer" data-id="${m.id}">${avatar(m.id)}<span class="grow"><b>${esc(m.name)}${m.id === meId() ? ' (Ty)' : ''}</b></span>${a.payer === m.id ? ico.check : ''}</button>`).join('')}`;
   } else if (S.picker === 'split') {
@@ -1290,7 +1311,7 @@ function pushWidget() {
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
     count: S.expenses.length, quickCats: quickTiles(t).slice(0, 4),
     members: (t.members || []).map((m) => ({ id: m.id, name: m.name })), me: me || '', rate: t.rate || 1,
-    cats: (t.categories && t.categories.length ? t.categories : DEFAULT_CATEGORIES).filter((c) => !/^inne$/i.test(c)).slice(0, 7).concat(['Inne']),
+    cats: allCategories(t).filter((c) => !/^inne$/i.test(c)).slice(0, 11).concat(['Inne']),
     fbKey: store.mode === 'firebase' ? firebaseConfig.apiKey : '', fbProject: store.mode === 'firebase' ? firebaseConfig.projectId : '',
     lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
@@ -1533,6 +1554,11 @@ const actions = {
     if (navigator.share) { try { await navigator.share({ title: S.trip.title, text, url }); } catch (e) {} }
     else copyText(text + '\n' + url, 'Skopiowano zaproszenie');
   },
+  'share-url': async (el) => {
+    const url = el.dataset.url, title = el.dataset.title;
+    if (navigator.share) { try { await navigator.share({ title, text: title, url }); } catch (e) {} }
+    else copyText(url, 'Skopiowano link');
+  },
   'copy-code': () => copyText(S.trip.id, 'Skopiowano kod ' + S.trip.id),
   'pm-pair': (el) => { S.pairForm = el.dataset.v === '1'; render(); $('#pm-n1')?.focus(); },
   'pm-add': () => {
@@ -1611,7 +1637,7 @@ const actions = {
   qcur: (el) => { S.q.currency = el.dataset.v; render(); },
   qpayer: (el) => { S.q.payer = el.dataset.id; document.querySelectorAll('[data-act="qpayer"]').forEach((b) => b.classList.toggle('on', b.dataset.id === el.dataset.id)); },
   qcat: (el) => quickSave(el.dataset.v),
-  qmore: () => { const q = S.q; openAdd(q.currency); if (S.add) { S.add.amount = q.amount; S.add.payer = q.payer; renderAdd(); } },
+  qmore: () => { const q = S.q; openAdd(q.currency); if (S.add) { S.add.amount = q.amount; S.add.payer = q.payer; renderAdd(); openPicker('cat'); } },
   undo: (el) => { store.deleteExpense(S.trip.id, el.dataset.id).catch(fail); $('#utoast')?.classList.remove('show'); toast('Cofnięto'); },
   member: (el) => { S.msheet = el.dataset.id; renderMemberSheet(); },
   'msheet-close': () => { S.msheet = null; closePicker(); },

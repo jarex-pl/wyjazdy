@@ -112,7 +112,7 @@ public class QuickAddActivity extends Activity {
         }
         if (payer.isEmpty() || !payerIds.contains(payer)) payer = payerIds.get(0);
         JSONArray cats = data.optJSONArray("cats");
-        if (cats != null) for (int i = 0; i < cats.length() && catNames.size() < 8; i++) {
+        if (cats != null) for (int i = 0; i < cats.length() && catNames.size() < 12; i++) {
             String c = cats.optString(i, "");
             if (!c.isEmpty()) catNames.add(c);
         }

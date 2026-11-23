@@ -7,6 +7,10 @@ Aplikacja na Androida (APK) i w przeglądarce. Wydatki w euro i złotówkach, ro
 
 Otwórz link na telefonie → pobierz → zainstaluj (za pierwszym razem telefon poprosi o zgodę na instalację z przeglądarki).
 
+**iPhone:** https://jarex-pl.github.io/wyjazdy/ – otwórz w Safari → Udostępnij → Do ekranu początkowego.
+
+![Kody QR: Android i iPhone](docs/kody-qr.png)
+
 ## Jak to jest zbudowane
 - `www/` – aplikacja (HTML/CSS/JS). Ten sam folder można wrzucić na Netlify jako wersję przeglądarkową (iPhone).
 - `android/` – projekt Android (Capacitor) z widżetami: *Wyjazd ze zdjęciem*, *Bilans wyjazdu*, *Do oddania* i *Szybki wydatek* (styl Granat i 7 innych).
