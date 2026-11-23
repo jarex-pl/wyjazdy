@@ -1,6 +1,6 @@
 // Service worker: aplikacja otwiera się też bez internetu.
 // Po każdej zmianie plików aplikacji podbij numer wersji poniżej.
-const VERSION = 'wyjazdy-v13';
+const VERSION = 'wyjazdy-v14';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/store.js', 'js/calc.js', 'js/data.js', 'js/config.js', 'js/native.js', 'js/version.js', 'js/cover.js', 'js/scene.js',

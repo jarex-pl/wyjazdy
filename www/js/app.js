@@ -85,6 +85,7 @@ function applyTheme() {
   setBarsTheme(t === 'dark');
 }
 applyTheme();
+document.documentElement.classList.toggle('noanim', ls.get('anim', true) === false);
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themeSetting() === 'system') { applyTheme(); scheduleRender(); } });
 
 let toastTimer = null;
@@ -932,6 +933,11 @@ function viewSettings() {
           <button class="btn sm" data-act="share-url" data-url="${esc(WEB_URL)}" data-title="Wyjazdy – iPhone">${ico.share} Wyślij</button></div>
       </div>
     </section>
+    <div class="label">Animacje (samolot, chmury)</div>
+    <div class="seg">
+      <button class="${ls.get('anim', true) !== false ? 'on' : ''}" data-act="anim" data-v="1">Włączone</button>
+      <button class="${ls.get('anim', true) === false ? 'on' : ''}" data-act="anim" data-v="0">Wyłączone</button>
+    </div>
     <div class="label">Motyw aplikacji</div>
     <div class="seg">
       <button class="${th === 'system' ? 'on' : ''}" data-act="theme" data-v="system">Systemowy</button>
@@ -1311,7 +1317,7 @@ function pushWidget() {
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
     count: S.expenses.length, quickCats: quickTiles(t).slice(0, 4),
     members: (t.members || []).map((m) => ({ id: m.id, name: m.name })), me: me || '', rate: t.rate || 1,
-    cats: allCategories(t).filter((c) => !/^inne$/i.test(c)).slice(0, 11).concat(['Inne']),
+    cats: allCategories(t),
     fbKey: store.mode === 'firebase' ? firebaseConfig.apiKey : '', fbProject: store.mode === 'firebase' ? firebaseConfig.projectId : '',
     lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
@@ -1554,6 +1560,7 @@ const actions = {
     if (navigator.share) { try { await navigator.share({ title: S.trip.title, text, url }); } catch (e) {} }
     else copyText(text + '\n' + url, 'Skopiowano zaproszenie');
   },
+  anim: (el) => { const on = el.dataset.v === '1'; ls.set('anim', on); document.documentElement.classList.toggle('noanim', !on); if (on) sessionStorage.removeItem('introShown'); render(); toast(on ? 'Animacje włączone' : 'Animacje wyłączone'); },
   'share-url': async (el) => {
     const url = el.dataset.url, title = el.dataset.title;
     if (navigator.share) { try { await navigator.share({ title, text: title, url }); } catch (e) {} }

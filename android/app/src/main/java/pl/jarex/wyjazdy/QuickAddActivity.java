@@ -1,11 +1,13 @@
 package pl.jarex.wyjazdy;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -13,9 +15,11 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,6 +67,8 @@ public class QuickAddActivity extends Activity {
     private final List<String> payerIds = new ArrayList<>();
     private final List<TextView> catViews = new ArrayList<>();
     private final List<String> catNames = new ArrayList<>();
+    private final List<String> catChipNames = new ArrayList<>();
+    private TextView catButton;
     private boolean saving = false;
 
     private int dp(float v) {
@@ -112,7 +118,7 @@ public class QuickAddActivity extends Activity {
         }
         if (payer.isEmpty() || !payerIds.contains(payer)) payer = payerIds.get(0);
         JSONArray cats = data.optJSONArray("cats");
-        if (cats != null) for (int i = 0; i < cats.length() && catNames.size() < 12; i++) {
+        if (cats != null) for (int i = 0; i < cats.length() && catNames.size() < 40; i++) {
             String c = cats.optString(i, "");
             if (!c.isEmpty()) catNames.add(c);
         }
@@ -124,8 +130,14 @@ public class QuickAddActivity extends Activity {
 
     private void buildUi(JSONArray members) {
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#99000000"));
+        root.setBackgroundColor(Color.parseColor("#B3000000"));
         root.setOnClickListener(v -> finish());
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+        root.addView(scroll, slp);
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -134,58 +146,65 @@ public class QuickAddActivity extends Activity {
         float r = dp(26);
         cbg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
         card.setBackground(cbg);
-        card.setPadding(dp(18), dp(14), dp(18), dp(18));
+        card.setPadding(dp(16), dp(12), dp(16), dp(16));
         card.setClickable(true);
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        root.addView(card, clp);
+        scroll.addView(card, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // pasek statusu u góry i pasek nawigacji u dołu nie mogą zasłaniać okna
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            card.setPadding(dp(18), dp(14), dp(18), dp(18) + insets.getSystemWindowInsetBottom());
+            root.setPadding(0, insets.getSystemWindowInsetTop() + dp(8), 0, 0);
+            card.setPadding(dp(16), dp(12), dp(16), dp(16) + insets.getSystemWindowInsetBottom());
             return insets;
         });
 
-        // nagłówek
+        // uchwyt + nagłówek
+        View grip = new View(this);
+        grip.setBackground(round(Color.parseColor("#4DFFFFFF"), 3, 0));
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(dp(40), dp(5));
+        gp.gravity = Gravity.CENTER_HORIZONTAL;
+        gp.bottomMargin = dp(8);
+        card.addView(grip, gp);
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.addView(text("Nowy wydatek", 19, Color.WHITE, true));
-        TextView sub = text(data.optString("title", "Wyjazd"), 13.5f, MUTED, false);
+        titles.addView(text("Nowy wydatek", 17, Color.WHITE, true));
+        TextView sub = text(data.optString("title", "Wyjazd"), 13, MUTED, false);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);
         titles.addView(sub);
         head.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        TextView close = text("✕", 18, Color.WHITE, false);
+        TextView close = text("✕", 16, Color.WHITE, false);
         close.setGravity(Gravity.CENTER);
-        close.setBackground(round(CARD2, 22, 0));
+        close.setBackground(round(CARD2, 20, 0));
         close.setOnClickListener(v -> finish());
-        head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
         card.addView(head);
 
         // waluta
         if (!"PLN".equals(foreign)) {
             LinearLayout seg = new LinearLayout(this);
             seg.setOrientation(LinearLayout.HORIZONTAL);
-            seg.setBackground(round(CARD2, 14, 0));
-            seg.setPadding(dp(4), dp(4), dp(4), dp(4));
+            seg.setBackground(round(CARD2, 13, 0));
+            seg.setPadding(dp(3), dp(3), dp(3), dp(3));
             curForeign = segBtn(foreignSym + "  " + ("EUR".equals(foreign) ? "Euro" : foreign));
             curPln = segBtn("zł  Złotówki");
             curForeign.setOnClickListener(v -> { currency = foreign; refresh(); });
             curPln.setOnClickListener(v -> { currency = "PLN"; refresh(); });
-            seg.addView(curForeign, new LinearLayout.LayoutParams(0, dp(42), 1));
-            seg.addView(curPln, new LinearLayout.LayoutParams(0, dp(42), 1));
+            seg.addView(curForeign, new LinearLayout.LayoutParams(0, dp(38), 1));
+            seg.addView(curPln, new LinearLayout.LayoutParams(0, dp(38), 1));
             LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            sp.topMargin = dp(12);
+            sp.topMargin = dp(10);
             card.addView(seg, sp);
         }
 
         // kwota
-        amountView = text("0", 44, Color.WHITE, true);
+        amountView = text("0", 36, Color.WHITE, true);
         amountView.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        ap.topMargin = dp(8);
+        ap.topMargin = dp(4);
         card.addView(amountView, ap);
-        convView = text("", 13, MUTED, false);
+        convView = text("", 12.5f, MUTED, false);
         convView.setGravity(Gravity.CENTER);
         card.addView(convView);
 
@@ -200,12 +219,12 @@ public class QuickAddActivity extends Activity {
             JSONObject m = members.optJSONObject(i);
             if (m == null) continue;
             String id = m.optString("id");
-            String name = id.equals(me) ? "Ty (" + m.optString("name") + ")" : m.optString("name");
-            TextView chip = text(name, 14.5f, Color.WHITE, true);
+            String name = id.equals(me) ? "Ty · " + m.optString("name") : m.optString("name");
+            TextView chip = text(name, 14, Color.WHITE, true);
             chip.setGravity(Gravity.CENTER);
             chip.setPadding(dp(14), 0, dp(14), 0);
             chip.setOnClickListener(v -> { payer = id; refresh(); });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38));
             lp.rightMargin = dp(8);
             prow.addView(chip, lp);
             payerViews.add(chip);
@@ -213,37 +232,34 @@ public class QuickAddActivity extends Activity {
         hs.addView(prow);
         card.addView(hs);
 
-        // kategoria
-        card.addView(label("Kategoria"));
-        LinearLayout row = null;
-        for (int i = 0; i < catNames.size(); i++) {
-            if (i % 4 == 0) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(38));
-                if (i > 0) rp.topMargin = dp(6);
-                card.addView(row, rp);
-            }
+        // kategoria: duży przycisk z wyborem + szybkie podpowiedzi
+        card.addView(label("Za co?"));
+        catButton = text("", 16, Color.WHITE, true);
+        catButton.setGravity(Gravity.CENTER_VERTICAL);
+        catButton.setPadding(dp(14), 0, dp(14), 0);
+        catButton.setBackground(round(Color.parseColor("#2E3B57"), 14, ACCENT));
+        catButton.setOnClickListener(v -> showCategories());
+        card.addView(catButton, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
+        HorizontalScrollView cs = new HorizontalScrollView(this);
+        cs.setHorizontalScrollBarEnabled(false);
+        LinearLayout crow = new LinearLayout(this);
+        crow.setOrientation(LinearLayout.HORIZONTAL);
+        for (int i = 0; i < catNames.size() && i < 8; i++) {
             String c = catNames.get(i);
-            TextView chip = text(c, 12.5f, Color.WHITE, true);
+            TextView chip = text(emoji(c) + "  " + c, 13.5f, Color.WHITE, false);
             chip.setGravity(Gravity.CENTER);
-            chip.setSingleLine(true);
-            chip.setEllipsize(TextUtils.TruncateAt.END);
-            chip.setPadding(dp(4), 0, dp(4), 0);
+            chip.setPadding(dp(12), 0, dp(12), 0);
             chip.setOnClickListener(v -> { category = c; refresh(); });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
-            if (i % 4 != 0) lp.leftMargin = dp(6);
-            row.addView(chip, lp);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36));
+            lp.rightMargin = dp(6);
+            crow.addView(chip, lp);
             catViews.add(chip);
+            catChipNames.add(c);
         }
-        if (catNames.size() % 4 != 0 && row != null) {
-            for (int k = catNames.size() % 4; k < 4; k++) {
-                View pad = new View(this);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
-                lp.leftMargin = dp(6);
-                row.addView(pad, lp);
-            }
-        }
+        cs.addView(crow);
+        LinearLayout.LayoutParams csp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        csp.topMargin = dp(8);
+        card.addView(cs, csp);
 
         // klawiatura
         String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "⌫"};
@@ -252,14 +268,14 @@ public class QuickAddActivity extends Activity {
             if (i % 3 == 0) {
                 krow = new LinearLayout(this);
                 krow.setOrientation(LinearLayout.HORIZONTAL);
-                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50));
-                rp.topMargin = dp(i == 0 ? 14 : 6);
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+                rp.topMargin = dp(i == 0 ? 12 : 6);
                 card.addView(krow, rp);
             }
             String k = keys[i];
-            TextView key = text(k, 24, Color.WHITE, false);
+            TextView key = text(k, 22, Color.WHITE, false);
             key.setGravity(Gravity.CENTER);
-            key.setBackground(round(CARD2, 14, LINE));
+            key.setBackground(round(CARD2, 13, LINE));
             key.setOnClickListener(v -> press(k));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
             if (i % 3 != 0) lp.leftMargin = dp(6);
@@ -267,16 +283,116 @@ public class QuickAddActivity extends Activity {
         }
 
         // zapisz
-        saveView = text("Zapisz", 17, Color.WHITE, true);
+        saveView = text("Zapisz", 16, Color.WHITE, true);
         saveView.setGravity(Gravity.CENTER);
-        saveView.setBackground(round(GREEN, 18, 0));
+        saveView.setSingleLine(true);
+        saveView.setEllipsize(TextUtils.TruncateAt.END);
+        saveView.setPadding(dp(10), 0, dp(10), 0);
+        saveView.setBackground(round(GREEN, 16, 0));
         saveView.setOnClickListener(v -> save());
-        LinearLayout.LayoutParams svp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54));
+        LinearLayout.LayoutParams svp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52));
         svp.topMargin = dp(12);
         card.addView(saveView, svp);
 
         setContentView(root);
         refresh();
+    }
+
+    /** Wyskakujące okno z wszystkimi kategoriami (ikona + nazwa). */
+    private void showCategories() {
+        final Dialog dlg = new Dialog(this);
+        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(round(BG, 22, LINE));
+        box.setPadding(dp(14), dp(14), dp(14), dp(14));
+        TextView t = text("Za co płacisz?", 18, Color.WHITE, true);
+        t.setPadding(dp(4), 0, 0, dp(10));
+        box.addView(t);
+        ScrollView sv = new ScrollView(this);
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout row = null;
+        for (int i = 0; i < catNames.size(); i++) {
+            if (i % 3 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78));
+                if (i > 0) rp.topMargin = dp(6);
+                grid.addView(row, rp);
+            }
+            String c = catNames.get(i);
+            boolean on = c.equals(category);
+            LinearLayout tile = new LinearLayout(this);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setGravity(Gravity.CENTER);
+            tile.setBackground(round(on ? ACCENT : CARD2, 14, on ? 0 : LINE));
+            TextView ic = text(emoji(c), 24, Color.WHITE, false);
+            ic.setGravity(Gravity.CENTER);
+            tile.addView(ic);
+            TextView nm = text(c, 12, Color.WHITE, true);
+            nm.setGravity(Gravity.CENTER);
+            nm.setMaxLines(2);
+            nm.setEllipsize(TextUtils.TruncateAt.END);
+            nm.setPadding(dp(4), dp(2), dp(4), 0);
+            tile.addView(nm);
+            tile.setOnClickListener(v -> { category = c; refresh(); dlg.dismiss(); });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            if (i % 3 != 0) lp.leftMargin = dp(6);
+            row.addView(tile, lp);
+        }
+        if (row != null) for (int k = catNames.size() % 3; k > 0 && k < 3; k++) {
+            View pad = new View(this);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            lp.leftMargin = dp(6);
+            row.addView(pad, lp);
+        }
+        sv.addView(grid);
+        int rows = (catNames.size() + 2) / 3;
+        int h = Math.min(dp(84) * rows, (int) (getResources().getDisplayMetrics().heightPixels * 0.6f));
+        box.addView(sv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h));
+        dlg.setContentView(box);
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dlg.show();
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.92f), ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    /** Ikona (emoji) dla kategorii – po słowach w nazwie. */
+    static String emoji(String c) {
+        String t = c.toLowerCase(new Locale("pl", "PL"));
+        if (t.contains("lody") || t.contains("deser")) return "🍦";
+        if (t.contains("alkohol") || t.contains("piw") || t.contains("wino") || t.startsWith("bar")) return "🍷";
+        if (t.contains("kaw")) return "☕";
+        if (t.contains("lotnicz") || t.contains("samolot")) return "✈️";
+        if (t.contains("taxi") || t.contains("taksów") || t.contains("uber")) return "🚕";
+        if (t.contains("pociąg") || t.contains("pociag")) return "🚆";
+        if (t.contains("prom") || t.contains("statek") || t.contains("rejs") || t.contains("tratw")) return "⛴️";
+        if (t.contains("plaż") || t.contains("plaz")) return "🏖️";
+        if (t.contains("pamiąt") || t.contains("pamiat") || t.contains("prezent")) return "🎁";
+        if (t.contains("aptek") || t.contains("lek")) return "💊";
+        if (t.contains("nocleg") || t.contains("hotel") || t.contains("apart") || t.contains("pokoj") || t.contains("pokój")) return "🛏️";
+        if (t.contains("wypożycz") || t.contains("wypozycz") || t.contains("rower")) return "🚲";
+        if (t.contains("muzeum") || t.contains("zamek")) return "🏛️";
+        if (t.contains("basen") || t.contains("spa")) return "🏊";
+        if (t.contains("napiw")) return "💁";
+        if (t.contains("internet") || t.contains("sim")) return "📶";
+        if (t.contains("pralni")) return "🧺";
+        if (t.contains("kantor") || t.contains("opłat") || t.contains("oplat")) return "💱";
+        if (t.contains("wycieczk")) return "🗺️";
+        if (t.contains("restaur")) return "🍝";
+        if (t.contains("jedz") || t.contains("obiad") || t.contains("kolac")) return "🍽️";
+        if (t.contains("paliw")) return "⛽";
+        if (t.contains("autostr")) return "🛣️";
+        if (t.contains("park")) return "🅿️";
+        if (t.contains("zakup") || t.contains("sklep")) return "🛒";
+        if (t.contains("bilet")) return "🎟️";
+        if (t.contains("atrakc")) return "⭐";
+        if (t.contains("transport") || t.contains("autobus")) return "🚌";
+        return "📦";
     }
 
     private TextView segBtn(String s) {
@@ -288,7 +404,7 @@ public class QuickAddActivity extends Activity {
     private TextView label(String s) {
         TextView t = text(s.toUpperCase(new Locale("pl", "PL")), 11.5f, MUTED, true);
         t.setLetterSpacing(0.1f);
-        t.setPadding(dp(2), dp(14), 0, dp(6));
+        t.setPadding(dp(2), dp(10), 0, dp(6));
         return t;
     }
 
@@ -337,12 +453,13 @@ public class QuickAddActivity extends Activity {
             payerViews.get(i).setBackground(round(on ? Color.parseColor("#2E3B57") : CARD2, 20, on ? ACCENT : LINE));
         }
         for (int i = 0; i < catViews.size(); i++) {
-            boolean on = catNames.get(i).equals(category);
-            catViews.get(i).setBackground(round(on ? ACCENT : CARD2, 12, on ? 0 : LINE));
+            boolean on = catChipNames.get(i).equals(category);
+            catViews.get(i).setBackground(round(on ? ACCENT : CARD2, 18, on ? 0 : LINE));
         }
+        catButton.setText(emoji(category) + "   " + category + "      ▾ zmień");
         boolean ok = v > 0 && !saving;
         saveView.setAlpha(ok ? 1f : 0.45f);
-        saveView.setText(v > 0 ? "Zapisz · " + category + " · " + money(v, currency, foreignSym) : "Wpisz kwotę");
+        saveView.setText(v > 0 ? "Zapisz  " + money(v, currency, foreignSym) : "Wpisz kwotę");
     }
 
     private void save() {
