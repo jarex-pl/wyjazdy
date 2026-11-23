@@ -37,6 +37,8 @@ public final class WidgetUpdater {
         for (int id : balanceIds) updateBalance(ctx, mgr, id);
         int[] quickIds = mgr.getAppWidgetIds(new ComponentName(ctx, QuickAddWidget.class));
         for (int id : quickIds) updateQuick(ctx, mgr, id);
+        int[] oweIds = mgr.getAppWidgetIds(new ComponentName(ctx, OweWidget.class));
+        for (int id : oweIds) updateOwe(ctx, mgr, id);
     }
 
     static PendingIntent openApp(Context ctx, String add, int requestCode) {
@@ -67,7 +69,7 @@ public final class WidgetUpdater {
         v.setTextViewText(R.id.balance_label, d.optString("balanceLabel", "Twój bilans"));
         v.setTextViewText(R.id.balance_value, d.optString("balanceText", "0,00 zł"));
         String sign = d.optString("balanceSign", "zero");
-        int color = "pos".equals(sign) ? Color.parseColor("#9DB8FF") : "neg".equals(sign) ? Color.parseColor("#FFB27A") : Color.WHITE;
+        int color = "pos".equals(sign) ? Color.parseColor("#1F45C8") : "neg".equals(sign) ? Color.parseColor("#B5520E") : Color.parseColor("#1B1F2A");
         v.setTextColor(R.id.balance_value, color);
         v.setTextViewText(R.id.balance_hint, d.optString("balanceHint", ""));
 
@@ -94,6 +96,27 @@ public final class WidgetUpdater {
             v.setViewVisibility(ROW_IDS[i], View.VISIBLE);
             v.setTextViewText(ROW_TITLE[i], r.optString("t", ""));
             v.setTextViewText(ROW_AMOUNT[i], r.optString("a", ""));
+        }
+        mgr.updateAppWidget(widgetId, v);
+    }
+
+    static void updateOwe(Context ctx, AppWidgetManager mgr, int widgetId) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_owe);
+        JSONObject d = readData(ctx);
+        JSONObject o = d != null ? d.optJSONObject("owe") : null;
+        v.setOnClickPendingIntent(R.id.owe_root, openApp(ctx, null, 300));
+        if (o == null) {
+            v.setTextViewText(R.id.owe_title, "Rozliczenie");
+            v.setTextViewText(R.id.owe_who, "Otwórz aplikację");
+            v.setTextViewText(R.id.owe_amount, "");
+            v.setTextViewText(R.id.owe_extra, "");
+        } else {
+            v.setTextViewText(R.id.owe_title, o.optString("title", "Rozliczenie"));
+            v.setTextViewText(R.id.owe_who, o.optString("who", ""));
+            v.setTextViewText(R.id.owe_amount, o.optString("amount", ""));
+            String sign = o.optString("sign", "zero");
+            v.setTextColor(R.id.owe_amount, "neg".equals(sign) ? Color.parseColor("#B5520E") : Color.parseColor("#1F45C8"));
+            v.setTextViewText(R.id.owe_extra, o.optString("extra", ""));
         }
         mgr.updateAppWidget(widgetId, v);
     }
