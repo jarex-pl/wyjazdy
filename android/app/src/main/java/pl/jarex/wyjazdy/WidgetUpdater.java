@@ -29,21 +29,29 @@ public final class WidgetUpdater {
     static final class Style { int bg, btn1, btn2, btn1Text, btn2Text, title, label, value, pos, neg, row; }
 
     static Style style(JSONObject d) {
-        String n = d != null ? d.optString("style", "blue") : "blue";
+        String n = d != null ? d.optString("style", "dark") : "dark";
         Style s = new Style();
         int white = Color.WHITE;
         if ("light".equals(n)) {
-            s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_blue; s.btn2 = R.drawable.wbtn_lightgray;
-            s.btn1Text = white; s.btn2Text = Color.parseColor("#0D1B3D");
-            s.title = Color.parseColor("#34456B"); s.label = Color.parseColor("#5B6B8C");
-            s.value = Color.parseColor("#0D1B3D"); s.pos = Color.parseColor("#0E9F6E"); s.neg = Color.parseColor("#E5484D");
-            s.row = Color.parseColor("#0D1B3D");
+            s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_gold; s.btn2 = R.drawable.wbtn_goldline_dark;
+            s.btn1Text = Color.parseColor("#18130A"); s.btn2Text = Color.parseColor("#17140E");
+            s.title = Color.parseColor("#6F685B"); s.label = Color.parseColor("#6F685B");
+            s.value = Color.parseColor("#17140E"); s.pos = Color.parseColor("#17140E"); s.neg = Color.parseColor("#B0452F");
+            s.row = Color.parseColor("#17140E");
+            return s;
+        }
+        if ("dark".equals(n) || "clear".equals(n)) {
+            s.bg = "dark".equals(n) ? R.drawable.wbg_dark : R.drawable.wbg_clear;
+            s.btn1 = R.drawable.wbtn_gold; s.btn2 = R.drawable.wbtn_goldline;
+            s.btn1Text = Color.parseColor("#18130A"); s.btn2Text = Color.parseColor("#F3EEE4");
+            s.title = Color.parseColor("#A8A296"); s.label = Color.parseColor("#A8A296");
+            s.value = Color.parseColor("#F3EEE4"); s.pos = Color.parseColor("#F3EEE4"); s.neg = Color.parseColor("#E79A86");
+            s.row = Color.parseColor("#F3EEE4");
+            if ("clear".equals(n)) { s.title = s.label = Color.parseColor("#E6FFFFFF"); s.value = s.pos = s.row = Color.WHITE; s.neg = Color.parseColor("#FFD2CC"); }
             return s;
         }
         s.btn1 = R.drawable.wbtn_white; s.btn2 = R.drawable.wbtn_glass; s.btn2Text = white;
         switch (n) {
-            case "dark": s.bg = R.drawable.wbg_dark; s.btn1 = R.drawable.wbtn_blue; s.btn2 = R.drawable.wbtn_darkgray; s.btn1Text = white; break;
-            case "clear": s.bg = R.drawable.wbg_clear; s.btn1Text = Color.parseColor("#1554E8"); break;
             case "violet": s.bg = R.drawable.wbg_violet; s.btn1Text = Color.parseColor("#5B2FD6"); break;
             case "teal": s.bg = R.drawable.wbg_teal; s.btn1Text = Color.parseColor("#0E7C6E"); break;
             case "sunset": s.bg = R.drawable.wbg_sunset; s.btn1Text = Color.parseColor("#D6455D"); break;

@@ -56,6 +56,11 @@ const ico = {
   split: svg('<circle cx="12" cy="12" r="9"/><path d="M12 3v18"/>', 22),
   list: svg('<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>', 22),
   key: svg('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>', 22),
+  globe: svg('<circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z"/>', 23, 1.7),
+  pie: svg('<path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>', 23, 1.7),
+  rows: svg('<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>', 23, 1.7),
+  swap2: svg('<path d="M4 8h15l-4-4M20 16H5l4 4"/>', 23, 1.7),
+  dots: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
   logo: '<img src="icons/icon-192.png" alt="" width="40" height="40" style="border-radius:11px;display:block">'
 };
 
@@ -70,7 +75,7 @@ function applyTheme() {
   const t = resolvedTheme();
   document.documentElement.dataset.theme = t;
   const m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', t === 'dark' ? '#0A1430' : '#F2F5FB');
+  if (m) m.setAttribute('content', t === 'dark' ? '#0C0C0E' : '#F5F1E9');
   setBarsTheme(t === 'dark');
 }
 applyTheme();
@@ -274,7 +279,23 @@ function avatar(id, cls = '') {
 // ------------------------------------------------------------ paski
 function navbar(active) {
   const it = (k, href, label, icon) => `<a href="${href}" class="${active === k ? 'on' : ''}" ${active === k ? 'aria-current="page"' : ''}>${icon}<span>${label}</span></a>`;
-  return `<nav class="navbar" aria-label="Menu">${it('home', '#/', 'Wyjazdy', ico.home)}${it('reports', '#/reports', 'Raporty', ico.chart)}${it('settings', '#/settings', 'Ustawienia', ico.gear)}</nav>`;
+  return `<nav class="navbar" aria-label="Menu">${it('home', '#/', 'Wyjazdy', ico.globe)}${it('reports', '#/reports', 'Raporty', ico.pie)}${it('settings', '#/settings', 'Ustawienia', ico.gear)}</nav>`;
+}
+const TRIP_TABS = ['', 'expenses', 'settle', 'report'];
+function tripTabs(active) {
+  const c = '#/t/' + esc(S.trip.id);
+  const it = (k, label, icon) => `<a href="${c}${k ? '/' + k : ''}" class="${active === k ? 'on' : ''}" ${active === k ? 'aria-current="page"' : ''}>${icon}<span>${label}</span></a>`;
+  return `<nav class="navbar" aria-label="Wyjazd">${it('', 'Wyjazd', ico.globe)}${it('expenses', 'Wydatki', ico.rows)}${it('settle', 'Rozliczenie', ico.swap2)}${it('report', 'Raport', ico.pie)}</nav>`;
+}
+function pageHead(title, right = '') {
+  return `<header class="topbar"><a class="ibtn" href="#/t/${esc(S.trip.id)}" aria-label="Wróć">${ico.back}</a><span class="grow"></span>${right}</header>
+    ${title ? `<div class="phead"><h1><span class="sub">${esc(S.trip.title)}</span>${title}</h1></div>` : `<div class="phead"><span class="sub" style="font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)">${esc(S.trip.title)} · Rozliczenie</span></div>`}`;
+}
+function quickAdd(compact) {
+  if (!isOpen()) return '';
+  const f = foreign();
+  if (f === 'PLN') return `<button class="btn gold big" data-act="add" data-cur="PLN"><span class="pl">+</span> Dodaj wydatek</button>`;
+  return `<div class="quick2 ${compact ? 'sm' : ''}"><button class="btn gold" data-act="add" data-cur="foreign"><span class="pl">+</span> ${f === 'EUR' ? 'Euro' : esc(f)}</button><button class="btn outline" data-act="add" data-cur="PLN"><span class="pl">+</span> Złotówki</button></div>`;
 }
 function liveChip() {
   if (store.mode === 'demo') return '<span class="live demo"><i></i>Demo</span>';
@@ -293,21 +314,17 @@ function viewHome() {
   const upd = S.update;
   return `
   <main class="page nav-pad">
-    <header class="topbar"><span style="width:44px">${ico.logo}</span><h1>Moje wyjazdy</h1><a class="ibtn" href="#/new" aria-label="Nowy wyjazd">${ico.plus}</a></header>
+    <header class="topbar left"><h1>Moje wyjazdy</h1><a class="ibtn gold" href="#/new" aria-label="Nowy wyjazd">${ico.plus}</a></header>
     ${upd ? `<div class="banner info"><span class="grow"><b>Nowa wersja ${esc(upd)}</b><br>Pobierz i zainstaluj na starej.</span><a class="btn primary sm" href="${APK_URL}" target="_blank" rel="noopener">Pobierz</a></div>` : ''}
     ${store.mode === 'demo' ? `<div class="banner warn">Tryb demo – dane tylko na tym urządzeniu.</div>` : ''}
-    <div class="stack">
+    <div class="stack" style="gap:16px">
       ${hist.map((h) => `
         <a class="tripcard" href="#/t/${esc(h.code)}">
-          ${photoBox('hist:' + h.code, h.country)}</div>
-          <div class="info">
-            <h2>${flagImg(h.country)}<span>${esc(h.title)}</span></h2>
-            ${h.from ? `<div class="meta">${ico.cal}${fmtDate(h.from)}${h.to && h.to !== h.from ? ' – ' + fmtDate(h.to) : ''}</div>` : ''}
-            ${h.people ? `<div class="meta">${ico.users}${h.people} ${h.people === 1 ? 'osoba' : h.people < 5 ? 'osoby' : 'osób'}</div>` : ''}
-            <div class="sum">${h.total != null ? fmt(h.total) + ' zł' : '&nbsp;'}</div>
-            <div>${h.status === 'closed' ? `<span class="pill ok">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 14, 3)} Rozliczony</span>` : `<span class="pill warn">● W trakcie</span>`}</div>
+          ${photoBox('hist:' + h.code, h.country)}<div class="shade"></div>
+            <span class="pill st">${h.status === 'closed' ? '✓ Rozliczony' : '● W trakcie'}</span>
+            <div class="tc-in"><span class="eyebrow">${esc(countryName(h.country) || '')}${h.from ? ' · ' + fmtDay(h.from) + (h.to && h.to !== h.from ? ' – ' + fmtDay(h.to) : '') : ''}</span><h2>${esc(h.title)}</h2></div>
           </div>
-          <span class="chev">${ico.chev}</span>
+          <div class="tc-foot">${h.people ? `<span>${h.people} ${h.people === 1 ? 'osoba' : h.people < 5 ? 'osoby' : 'osób'}</span>` : ''}<b>${h.total != null ? fmt(h.total) + ' zł' : ''}</b></div>
         </a>`).join('')}
     </div>
     <section class="card">
@@ -409,7 +426,7 @@ function viewTripRoute() {
   const sub = S.route.sub;
   if (sub === 'expenses') return viewExpenses();
   if (sub === 'settle') return viewSettle();
-  if (sub === 'report') return `<main class="page">${subTop('Raport wydatków')}${reportBody()}</main>`;
+  if (sub === 'report') return `<main class="page tab-pad">${pageHead('Raport')}${reportBody()}</main>${tripTabs('report')}`;
   if (sub === 'edit') return viewEdit();
   return viewDashboard();
 }
@@ -437,63 +454,70 @@ function viewDashboard() {
   const b = computeBalances(t, S.expenses);
   const myBal = me ? round2(b.balance[me] || 0) : 0;
   const tr = settle(b.balance);
-  let hint = '';
+  let note = '';
   if (me) {
-    if (myBal > 0.009) { const who = tr.filter((x) => x.to === me).map((x) => mNameFull(x.from)); hint = (who.join(', ') || 'Inni') + (who.length > 1 ? ' oddadzą Ci' : ' odda Ci'); }
-    else if (myBal < -0.009) { const to = tr.filter((x) => x.from === me).map((x) => mNameFull(x.to)); hint = 'Oddajesz: ' + (to.join(', ') || 'innym'); }
-    else hint = 'Jesteś rozliczony – nikt nikomu nic';
+    if (myBal > 0.009) note = 'Oddadzą Ci: ' + tr.filter((x) => x.to === me).map((x) => `${esc(mNameFull(x.from))} <b>${money(x.amount, 'PLN')}</b>`).join(', ');
+    else if (myBal < -0.009) note = 'Oddajesz: ' + tr.filter((x) => x.from === me).map((x) => `${esc(mNameFull(x.to))} <b>${money(x.amount, 'PLN')}</b>`).join(', ');
+    else note = 'Jesteś na zero — nikt nikomu nic.';
   }
-  const recent = [...S.expenses].sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
+  const f = foreign();
+  const sumF = S.expenses.filter((e) => (e.type || 'shared') === 'shared' && e.currency === f).reduce((s, e) => s + Number(e.amount || 0), 0);
+  const recent = sortedExp(S.expenses).slice(0, 6);
   const key = 'trip:' + t.id + ':' + coverSig(t);
   const dates = tripDates();
+  const people = totalWeight(t);
   return `
-  <main class="page flush">
+  <main class="page flush tab-pad">
     ${photoBox(key, t.country, 'hero', '')}
       <div class="shade"></div>
-      <div class="bar"><a class="ibtn onphoto" href="#/" aria-label="Wróć">${ico.back}</a><span class="sp"></span>${liveChip()}
+      <div class="bar"><a class="ibtn onphoto" href="#/" aria-label="Wszystkie wyjazdy">${ico.back}</a><span class="sp"></span>${liveChip()}
         <button class="ibtn onphoto" data-act="toggle-theme" aria-label="Jasny lub ciemny motyw">${resolvedTheme() === 'dark' ? ico.sun : ico.moon}</button>
-        <a class="ibtn onphoto" href="#/t/${esc(t.id)}/edit" aria-label="Ustawienia wyjazdu">${ico.edit}</a></div>
+        <a class="ibtn onphoto" href="#/t/${esc(t.id)}/edit" aria-label="Osoby i ustawienia wyjazdu">${ico.dots}</a></div>
       <div class="title">
-        <h2>${flagImg(t.country)}<span>${esc(t.title)}</span></h2>
-        <div class="meta">${dates ? `<span>${ico.cal}${esc(dates)}</span>` : ''}<span>${ico.users}${totalWeight(t)} ${totalWeight(t) < 5 ? 'osoby' : 'osób'}</span></div>
+        <div class="eyebrow">${esc(countryName(t.country) || '')}${dates ? ' · ' + esc(dates) : ''}</div>
+        <h2>${esc(t.title)}</h2>
+        <div class="meta"><span>${people} ${people < 5 && people > 1 ? 'osoby' : people === 1 ? 'osoba' : 'osób'}</span><a class="faces" href="#/t/${esc(t.id)}/edit" aria-label="Osoby">${(t.members || []).slice(0, 5).map((m) => avatar(m.id, 'sm')).join('')}</a></div>
       </div>
     </div>
     ${!isOpen() ? `<div class="banner ok">${ico.check}<span><b>Wyjazd rozliczony.</b> Tylko do odczytu.</span></div>` : ''}
-    <div class="people">${(t.members || []).map((m) => `<a class="person" href="#/t/${esc(t.id)}/edit" style="text-decoration:none;color:inherit">${avatar(m.id, 'lg')}<span>${esc(m.id === me ? 'Ty' : m.name)}</span></a>`).join('')}</div>
-    ${me ? `<a class="balance ${myBal > 0.009 ? '' : myBal < -0.009 ? 'neg' : 'zero'}" href="#/t/${esc(t.id)}/settle">
-      <span class="grow"><span class="t">Twój bilans</span><div class="v">${signed(myBal)} zł</div><span class="h">${esc(hint)}</span></span>${ico.chev}</a>` : ''}
-    <div class="tiles">
-      <div class="tile"><span class="ico">${ico.wallet}</span><span class="grow"><span>Łączne wydatki</span><b>${fmt(b.total)} zł</b></span></div>
-      <div class="tile"><span class="ico">${ico.user}</span><span class="grow"><span>Na osobę</span><b>${fmt(b.total / (totalWeight(t) || 1))} zł</b></span></div>
+    ${me ? `<a class="bal" href="#/t/${esc(t.id)}/settle">
+      <span class="lbl">Twój bilans <span>Rozliczenie ›</span></span>
+      <div class="big ${myBal < -0.009 ? 'neg' : 'pos'}">${signed(myBal)}<small>zł</small></div>
+      <div class="note">${note}</div></a>` : `<button class="btn outline" data-act="skip-me-off">Wybierz, kim jesteś</button>`}
+    ${quickAdd()}
+    <div class="stats">
+      <div><span>Wydatki</span><b>${fmt0(b.total)} zł</b></div>
+      <div><span>Na osobę</span><b>${fmt0(b.total / (people || 1))} zł</b></div>
+      ${f !== 'PLN' ? `<div><span>W ${f === 'EUR' ? 'euro' : esc(f)}</span><b>${fmt0(sumF)} ${esc(sym(f))}</b></div>` : `<div><span>Pozycji</span><b>${S.expenses.length}</b></div>`}
     </div>
-    ${isOpen() ? `<button class="btn primary big" data-act="add">${ico.plus} Dodaj wydatek</button>` : ''}
-    <div class="quick">
-      <a href="#/t/${esc(t.id)}/settle">${ico.swap}Rozliczenie</a>
-      <a href="#/t/${esc(t.id)}/report">${ico.chart}Raport</a>
-      <button data-act="pdf">${ico.pdf}PDF</button>
-    </div>
-    <div class="sec-title">Ostatnie wydatki ${S.expenses.length ? `<a href="#/t/${esc(t.id)}/expenses">Zobacz wszystkie ›</a>` : ''}</div>
-    ${recent.length ? `<div class="list">${recent.map(expenseRow).join('')}</div>` : `<div class="empty">Brak wydatków. Stuknij „Dodaj wydatek”.</div>`}
-  </main>`;
+    ${recent.length ? `<div class="sec-title">Ostatnie <a href="#/t/${esc(t.id)}/expenses">Wszystkie (${S.expenses.length}) ›</a></div>
+      ${groupByDay(recent)}
+      <p class="hint">Stuknij wydatek, aby go poprawić lub usunąć</p>` : `<div class="empty">Brak wydatków.<br>Stuknij „+ ${f === 'PLN' ? 'Dodaj wydatek' : f === 'EUR' ? 'Euro' : esc(f)}”, żeby dodać pierwszy.</div>`}
+  </main>${tripTabs('')}`;
+}
+function sortedExp(list) { return [...list].sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)); }
+function groupByDay(list) {
+  const groups = [];
+  for (const e of list) { const g = groups[groups.length - 1]; if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] }); }
+  return groups.map((g) => `<div class="day">${esc(dayLabel(g.date || todayISO()))}</div><div class="list">${g.items.map(expenseRow).join('')}</div>`).join('');
 }
 
 function expenseSub(e) {
   const type = e.type || 'shared';
-  const d = e.date ? fmtDate(e.date) + ' · ' : '';
-  if (type === 'loan') return d + `${esc(mName(e.payer))} → ${esc(mName(e.recipient))}`;
-  if (type === 'transfer') return d + `${esc(mName(e.payer))} oddał(a) → ${esc(mName(e.recipient))}`;
-  if (e.shares) return d + `${esc(mName(e.payer))} · indywidualnie`;
-  const n = Array.isArray(e.splitAmong) && e.splitAmong.length ? e.splitAmong.length : (S.trip.members || []).length;
-  const all = n === (S.trip.members || []).length;
-  return d + `${esc(mName(e.payer))}${all ? '' : ' · dla ' + n + ' z ' + (S.trip.members || []).length}`;
+  if (type === 'loan') return `Pożyczka: ${esc(mName(e.payer))} → ${esc(mName(e.recipient))}`;
+  if (type === 'transfer') return `${esc(mName(e.payer))} oddał(a) → ${esc(mName(e.recipient))}`;
+  if (e.shares) return `${esc(mName(e.payer))} · indywidualnie`;
+  const all = (S.trip.members || []).length;
+  const n = Array.isArray(e.splitAmong) && e.splitAmong.length ? e.splitAmong.length : all;
+  return `${esc(mName(e.payer))} · ${n === all ? 'po równo' : 'dla ' + n + ' z ' + all}`;
 }
 function expenseRow(e) {
   const k = iconKey(e);
-  const badge = e.type === 'loan' ? ' <span class="badge loan">POŻYCZKA</span>' : e.type === 'transfer' ? ' <span class="badge ok">ZWROT</span>' : '';
+  const badge = e.type === 'loan' ? '<span class="badge loan">POŻYCZKA</span>' : e.type === 'transfer' ? '<span class="badge ok">ZWROT</span>' : '';
   return `
   <button class="exp" data-act="edit" data-id="${esc(e.id)}">
-    <span class="ei" style="background:${iconBg(k)}">${iconSvg(k, 22)}</span>
-    <span class="grow"><span class="t">${esc(e.desc || e.category || 'Wydatek')}${badge}</span><span class="s">${expenseSub(e)}${e.note ? ' · ' + esc(e.note) : ''}</span></span>
+    <span class="ei">${iconSvg(k, 21, 'currentColor')}</span>
+    <span class="grow"><span class="t">${esc(e.desc || e.category || 'Wydatek')} ${badge}</span><span class="s">${expenseSub(e)}${e.note ? ' · ' + esc(e.note) : ''}</span></span>
     <span class="a"><b>${money(e.amount, e.currency)}</b>${e.currency !== 'PLN' ? `<span>${money(toPLN(e, S.trip.rate), 'PLN')}</span>` : ''}</span>
   </button>`;
 }
@@ -501,25 +525,27 @@ function viewExpenses() {
   const me = meId();
   let list = [...S.expenses];
   if (S.filter === 'mine' && me) list = list.filter((e) => e.payer === me || e.recipient === me || ((e.type || 'shared') === 'shared' && (!e.splitAmong?.length || e.splitAmong.includes(me)) && (!e.shares || e.shares[me])));
-  list.sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0));
-  const groups = [];
-  for (const e of list) { const g = groups[groups.length - 1]; if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] }); }
+  list = sortedExp(list);
   return `
-  <main class="page ${isOpen() ? 'bar-pad' : ''}">
-    ${subTop(`Wydatki (${S.expenses.length})`)}
-    ${me ? `<div class="seg"><button class="${S.filter === 'all' ? 'on' : ''}" data-act="filter" data-v="all">Wszystkie</button><button class="${S.filter === 'mine' ? 'on' : ''}" data-act="filter" data-v="mine">Moje</button></div>` : ''}
-    ${groups.length ? groups.map((g) => `<div class="day">${esc(dayLabel(g.date || todayISO()))}</div><div class="list">${g.items.map(expenseRow).join('')}</div>`).join('') : '<div class="empty">Brak wydatków.</div>'}
-  </main>
-  ${isOpen() ? `<div class="actionbar"><button class="btn primary big" data-act="add">${ico.plus} Dodaj wydatek</button></div>` : ''}`;
+  <main class="page tab-pad">
+    ${pageHead(`Wydatki <span class="muted" style="font-size:.6em">${S.expenses.length}</span>`)}
+    ${quickAdd(true)}
+    ${me ? `<div class="seg"><button class="${S.filter === 'all' ? 'on' : ''}" data-act="filter" data-v="all">Wszystkie</button><button class="${S.filter === 'mine' ? 'on' : ''}" data-act="filter" data-v="mine">Dotyczące mnie</button></div>` : ''}
+    ${list.length ? groupByDay(list) + '<p class="hint">Stuknij wydatek, aby go poprawić lub usunąć</p>' : '<div class="empty">Brak wydatków.</div>'}
+  </main>${tripTabs('expenses')}`;
 }
 function dayLabel(iso) {
   const d = new Date(iso + 'T12:00:00');
   const nice = d.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
   if (iso === todayISO()) return 'Dziś · ' + nice;
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yi = new Date(y.getTime() - y.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  if (iso === yi) return 'Wczoraj · ' + nice;
   return nice;
 }
 
 // ------------------------------------------------------------ rozliczenie
+const NUMW = ['', 'Jeden przelew', 'Dwa przelewy', 'Trzy przelewy', 'Cztery przelewy'];
 function viewSettle() {
   const t = S.trip;
   const hasF = foreign() !== 'PLN';
@@ -528,47 +554,45 @@ function viewSettle() {
   const b = computeBalances(t, S.expenses, cur ? { currency: cur } : {});
   const unit = cur || 'PLN';
   const tr = settle(b.balance);
+  const bAll = computeBalances(t, S.expenses);
   const done = S.expenses.filter((e) => e.type === 'transfer').sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
-  const allTr = settle(computeBalances(t, S.expenses).balance).length;
+  const allTr = settle(bAll.balance).length;
+  const people = totalWeight(t) || 1;
   return `
-  <main class="page">
-    ${subTop('Rozliczenie wyjazdu')}
-    <div class="done-head">
-      <div class="ok ${tr.length ? 'wait' : ''}">${tr.length ? ico.swap : ico.check}</div>
-      <h2>${tr.length ? `Do oddania: ${tr.length} ${tr.length === 1 ? 'przelew' : tr.length < 5 ? 'przelewy' : 'przelewów'}` : 'Rozliczenie zakończone!'}</h2>
-      <p class="muted small">${tr.length ? 'Najmniej przelewów, żeby wszyscy wyszli na zero.' : 'Wszyscy są na zero.'}</p>
-    </div>
+  <main class="page tab-pad">
+    ${pageHead('')}
+    <div class="hl"><h2>${tr.length ? `${tr.length < 5 ? NUMW[tr.length] : tr.length + ' przelewów'}<br><em>i jesteście kwita.</em>` : `Wszyscy<br><em>są rozliczeni.</em>`}</h2>
+      <p>Wyjazd kosztował <b>${fmt(bAll.total)} zł</b>, średnio ${fmt(bAll.total / people)} zł na osobę.</p></div>
     ${hasF ? `<div class="seg">
       <button class="${mode === 'pln' ? 'on' : ''}" data-act="settle-mode" data-v="pln">Razem w zł</button>
       <button class="${mode === foreign() ? 'on' : ''}" data-act="settle-mode" data-v="${esc(foreign())}">Tylko ${esc(foreign())}</button>
-      <button class="${mode === 'PLN' ? 'on' : ''}" data-act="settle-mode" data-v="PLN">Tylko PLN</button>
+      <button class="${mode === 'PLN' ? 'on' : ''}" data-act="settle-mode" data-v="PLN">Tylko zł</button>
     </div>` : ''}
-    <div class="list">${(t.members || []).map((m) => {
-      const v = round2(b.balance[m.id] || 0);
-      return `<div class="who">${avatar(m.id)}<span class="n"><b>${esc(m.name)}${m.id === meId() ? ' (Ty)' : ''}</b><span>${v > 0 ? 'ma otrzymać' : v < 0 ? 'powinien(-na) dopłacić' : 'rozliczony'}</span></span>
-        <span class="pill ${v > 0 ? 'ok' : v < 0 ? 'neg' : 'blue'}">${signed(v)} ${esc(sym(unit))}</span></div>`;
-    }).join('')}</div>
-    ${tr.length ? `<div class="sec-title">Kto komu oddaje</div>` : ''}
     ${tr.map((x) => `
-      <section class="card trc">
-        <div class="top">${avatar(x.from)}<span class="arrow">${svg('<path d="M5 12h14M13 6l6 6-6 6"/>', 20)}</span>${avatar(x.to)}
-          <span class="grow"></span><span class="amt">${money(x.amount, unit)}</span></div>
-        <div class="names"><b>${esc(mNameFull(x.from))}</b>oddaje → ${esc(mNameFull(x.to))}</div>
-        ${unit !== 'PLN' ? `<div class="muted small">≈ ${money(x.amount * t.rate, 'PLN')}</div>` : ''}
+      <section class="trc">
+        <div class="trrow">${avatar(x.from, 'md')}<span class="arrow"></span>${avatar(x.to, 'md')}</div>
+        <div class="amt">${money(x.amount, unit)}${unit !== 'PLN' ? `<small>≈ ${money(x.amount * t.rate, 'PLN')}</small>` : ''}</div>
+        <div class="names"><span>${esc(x.from === meId() ? 'Ty' : mNameFull(x.from))}</span><em>oddaje →</em><span>${esc(x.to === meId() ? 'Tobie' : mNameFull(x.to))}</span></div>
         ${isOpen() ? `<div class="grid2">
-          <button class="btn sm" style="flex:1" data-act="copy-amt" data-v="${x.amount.toFixed(2).replace('.', ',')}">Kopiuj kwotę</button>
-          <button class="btn primary sm" style="flex:1" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.8)} Oddane</button>
+          <button class="btn sm" data-act="copy-amt" data-v="${x.amount.toFixed(2).replace('.', ',')}">Kopiuj kwotę</button>
+          <button class="btn sm outline" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}" style="color:var(--gold-ink)">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.6)} Oddane</button>
         </div>` : ''}
       </section>`).join('')}
-    ${done.length ? `<div class="sec-title">Oddane</div><div class="list">${done.map((e) => `
+    <div class="sec-title">Bilans osób</div>
+    <div class="list">${(t.members || []).map((m) => {
+      const v = round2(b.balance[m.id] || 0);
+      return `<div class="who">${avatar(m.id)}<span class="n"><b>${esc(m.name)}${m.id === meId() ? ' (Ty)' : ''}</b><span>zapłacił(a) ${money(b.paid[m.id] || 0, unit)}</span></span>
+        <span class="v ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : ''}">${signed(v)} ${esc(sym(unit))}</span></div>`;
+    }).join('')}</div>
+    ${done.length ? `<div class="sec-title">Już oddane</div><div class="list">${done.map((e) => `
       <div class="who">${avatar(e.payer, 'sm')}<span class="n"><b>${esc(mNameFull(e.payer))} → ${esc(mNameFull(e.recipient))}</b><span>${fmtDate(e.date)}</span></span>
-        <b class="nowrap">${money(e.amount, e.currency)}</b>${isOpen() ? `<button class="link danger" data-act="undo-paid" data-id="${esc(e.id)}">Cofnij</button>` : ''}</div>`).join('')}</div>` : ''}
-    <button class="btn primary big" data-act="share-result">${ico.share} Udostępnij wynik</button>
+        <span class="v">${money(e.amount, e.currency)}</span>${isOpen() ? `<button class="link danger" data-act="undo-paid" data-id="${esc(e.id)}">Cofnij</button>` : ''}</div>`).join('')}</div>` : ''}
+    <button class="btn primary big" data-act="share-result">${ico.share} Wyślij rozliczenie</button>
     <div class="grid2">
       <button class="btn" data-act="pdf">${ico.pdf} Raport PDF</button>
       ${isOpen() && isAdmin() ? `<button class="btn" data-act="close-trip" data-remaining="${allTr}">${ico.check} Zakończ</button>` : !isOpen() && isAdmin() ? `<button class="btn" data-act="reopen">Otwórz ponownie</button>` : `<a class="btn" href="#/t/${esc(t.id)}/report">${ico.chart} Raport</a>`}
     </div>
-  </main>`;
+  </main>${tripTabs('settle')}`;
 }
 
 // ------------------------------------------------------------ raport
@@ -582,7 +606,7 @@ function reportData() {
     cats[k].sum += toPLN(e, t.rate); cats[k].n++;
   });
   const list = Object.values(cats).sort((a, c) => c.sum - a.sum);
-  const palette = ['#2F80FF', '#FF8A3D', '#22B98A', '#A06BFF', '#FF5C8A', '#FFB547', '#16B5C9', '#5B8CFF', '#C7834B', '#8899BB'];
+  const palette = ['#C9A564', '#7FA393', '#C07A62', '#6F86A6', '#A57BA0', '#D8B98A', '#5E7D6E', '#B5895A', '#8E9AAF', '#9C6B5A'];
   list.forEach((c, i) => { c.color = palette[i % palette.length]; });
   return { b, list };
 }
@@ -614,13 +638,13 @@ function reportBody() {
   } else if (S.repTab === 1) {
     const max = Math.max(1, ...list.map((c) => c.sum));
     body = list.length ? `<div class="list bars">${list.map((c) => `
-      <div><span class="row" style="gap:10px"><span class="ei" style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${iconBg(c.key)}">${iconSvg(c.key, 18)}</span><b>${esc(c.name)}</b><span class="muted small">${c.n}×</span></span>
+      <div><span class="row" style="gap:10px"><span class="ei" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center">${iconSvg(c.key, 18, 'currentColor')}</span><b>${esc(c.name)}</b><span class="muted small">${c.n}×</span></span>
         <b class="nowrap">${fmt(c.sum)} zł</b><span class="bar"><i style="width:${(c.sum / max) * 100}%;background:${c.color}"></i></span></div>`).join('')}</div>` : '<div class="empty">Brak wydatków.</div>';
   } else {
     body = `<div class="list">${(t.members || []).map((m) => {
       const v = round2(b.balance[m.id] || 0);
       return `<div class="who">${avatar(m.id)}<span class="n"><b>${esc(m.name)}</b><span>zapłacił(a) ${fmt(b.paid[m.id] || 0)} zł · udział ${fmt(b.share[m.id] || 0)} zł</span></span>
-        <span class="pill ${v > 0 ? 'ok' : v < 0 ? 'neg' : 'blue'}">${signed(v)} zł</span></div>`;
+        <span class="v ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : ''}">${signed(v)} zł</span></div>`;
     }).join('')}</div>`;
   }
   return `
@@ -635,17 +659,17 @@ function viewReportsNav() {
   const hist = ls.get('history', []);
   return `
   <main class="page nav-pad">
-    <header class="topbar left"><h1>Raport wydatków</h1></header>
+    <header class="topbar left"><h1>Raport</h1></header>
     ${hist.length > 1 ? `<select class="input" data-change="rep-trip" aria-label="Wyjazd">${hist.map((h) => `<option value="${esc(h.code)}" ${h.code === S.trip.id ? 'selected' : ''}>${esc(h.title)}</option>`).join('')}</select>` : `<div class="label">${esc(S.trip.title)}</div>`}
     ${reportBody()}
   </main>${navbar('reports')}`;
 }
 
 // ------------------------------------------------------------ ustawienia (globalne)
-const WSTYLES = [['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód'], ['light', 'Jasny'], ['dark', 'Ciemny'], ['clear', 'Bez tła']];
+const WSTYLES = [['dark', 'Czarny'], ['light', 'Kość słoniowa'], ['clear', 'Szkło'], ['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód']];
 function viewSettings() {
   const th = themeSetting();
-  const ws = ls.get('wstyle', 'blue');
+  const ws = ls.get('wstyle', 'dark');
   const last = ls.get('lastTrip', null);
   return `
   <main class="page nav-pad">
@@ -804,61 +828,63 @@ function convText() {
   return `≈ ${money(amountValue() * S.trip.rate, 'PLN')} · kurs ${fmtRate(S.trip.rate)}`;
 }
 function splitLabel() {
-  const a = S.add, ms = S.trip.members;
-  if (a.split === 'equal') return `Po równo na wszystkich (${totalWeight(S.trip)} os.)`;
-  if (a.split === 'some') return 'Wybrane: ' + (a.among.map(mNameFull).join(', ') || '—');
-  if (a.split === 'custom') return 'Indywidualnie (' + Object.values(a.shares).filter((v) => parseFloat(String(v).replace(',', '.')) > 0).length + ' os.)';
+  const a = S.add;
+  if (a.split === 'equal') return `Po równo · wszyscy (${totalWeight(S.trip)} os.)`;
+  if (a.split === 'some') return 'Tylko: ' + (a.among.map(mNameFull).join(', ') || '—');
+  if (a.split === 'custom') return 'Indywidualnie · ' + Object.values(a.shares).filter((v) => parseFloat(String(v).replace(',', '.')) > 0).length + ' os.';
   if (a.split === 'loan') return 'Pożyczka dla: ' + (a.recipient ? mNameFull(a.recipient) : 'wybierz…');
   if (a.split === 'transfer') return 'Zwrot dla: ' + (a.recipient ? mNameFull(a.recipient) : 'wybierz…');
   return '';
 }
+function saveLabel() {
+  const a = S.add;
+  const v = amountValue();
+  return `${ico.check} ${a.mode === 'add' ? 'Zapisz' : 'Zapisz zmiany'}${v > 0 ? ' ' + money(v, a.currency) : ''}`;
+}
 function renderAdd() {
   const a = S.add;
   if (!a) return;
-  const t = S.trip;
-  const k = a.category ? iconKey({ category: a.category }) : 'other';
+  const t = S.trip, me = meId();
+  const cats = t.categories && t.categories.length ? t.categories : DEFAULT_CATEGORIES;
+  const typing = document.activeElement && document.activeElement.id === 'add-desc';
   document.body.classList.add('no-scroll');
   $('#sheet-root').innerHTML = `
-  <div class="add" role="dialog" aria-modal="true" aria-label="${a.mode === 'add' ? 'Dodaj wydatek' : 'Edytuj wydatek'}">
-    <div class="scroll">
-      <header class="topbar">
+  <div class="add ${typing ? 'typing' : ''}" role="dialog" aria-modal="true" aria-label="${a.mode === 'add' ? 'Nowy wydatek' : 'Edytuj wydatek'}">
+    <div class="scroll" id="add-scroll">
+      <header class="topbar addtop">
         <button class="ibtn" data-act="add-close" aria-label="Zamknij">${ico.close}</button>
-        <h1>${a.mode === 'add' ? 'Dodaj wydatek' : a.split === 'transfer' ? 'Zwrot' : 'Edytuj wydatek'}</h1>
-        ${a.mode === 'edit' ? `<button class="ibtn" data-act="add-delete" aria-label="Usuń wydatek" style="color:var(--neg)">${ico.trash}</button>` : '<span style="width:44px"></span>'}
+        ${foreign() !== 'PLN' ? `<div class="seg mini">
+          <button class="${a.currency === foreign() ? 'on' : ''}" data-act="add-cur" data-v="${esc(foreign())}">${esc(sym(foreign()))} ${esc(foreign() === 'EUR' ? 'Euro' : foreign())}</button>
+          <button class="${a.currency === 'PLN' ? 'on' : ''}" data-act="add-cur" data-v="PLN">zł</button>
+        </div>` : `<h1>${a.mode === 'add' ? 'Nowy wydatek' : 'Edycja'}</h1>`}
+        <label class="datechip">${ico.cal}<span id="add-date-txt">${a.date === todayISO() ? 'Dziś' : fmtDay(a.date)}</span><input id="add-date" type="date" value="${esc(a.date)}" data-change="add-date" aria-label="Data"></label>
       </header>
-      ${foreign() !== 'PLN' ? `<div class="seg">
-        <button class="${a.currency === foreign() ? 'on' : ''}" data-act="add-cur" data-v="${esc(foreign())}">${esc(sym(foreign()))} ${esc(foreign() === 'EUR' ? 'Euro' : foreign())}</button>
-        <button class="${a.currency === 'PLN' ? 'on' : ''}" data-act="add-cur" data-v="PLN">zł Złotówki</button>
-      </div>` : ''}
-      <div class="amount-card">
-        <div class="row"><span class="lbl grow">Kwota</span>
-          <label class="pill blue" style="position:relative">${ico.cal}<span id="add-date-txt">${a.date === todayISO() ? 'Dziś' : fmtDate(a.date)}</span><input id="add-date" type="date" value="${esc(a.date)}" data-change="add-date" aria-label="Data" style="position:absolute;inset:0;opacity:0;width:100%"></label></div>
-        <div class="amount ${amountClass()}" id="add-amount">${amountText()}<small>${esc(sym(a.currency))}</small></div>
+      <button class="amount-box" data-act="show-keys" aria-label="Kwota">
+        <div class="amount ${amountClass()}" id="add-amount">${amountText()}<span class="caret"></span><small>${esc(sym(a.currency))}</small></div>
         <div class="conv" id="add-conv">${convText()}</div>
-      </div>
-      ${a.split !== 'transfer' ? `<button class="rowbtn" data-act="pick" data-v="cat">
-        <span class="ri" style="background:${iconBg(k)}">${iconSvg(k, 24)}</span>
-        <span class="rt"><span>Kategoria</span><b>${esc(a.category || 'Wybierz kategorię')}</b></span><span class="chev">${ico.chev}</span></button>` : ''}
-      <button class="rowbtn" data-act="pick" data-v="payer">${avatar(a.payer)}
-        <span class="rt"><span>${a.split === 'transfer' ? 'Kto oddał' : 'Zapłacił'}</span><b>${esc(a.payer === meId() ? 'Ty (' + mNameFull(a.payer) + ')' : mNameFull(a.payer))}</b></span><span class="chev">${ico.chev}</span></button>
-      <button class="rowbtn" data-act="pick" data-v="split">
-        <span class="ri" style="background:var(--blue-l);color:var(--blue)">${ico.split}</span>
-        <span class="rt"><span>Podział kosztów</span><b>${esc(splitLabel())}</b></span><span class="chev">${ico.chev}</span></button>
-      <input id="add-desc" class="input" placeholder="Opis (opcjonalnie), np. Kolacja w trattorii" value="${esc(a.desc)}" data-change="add-desc" list="add-sugg">
+      </button>
+      ${a.split !== 'transfer' ? `<div class="cats">${cats.map((c) => `<button class="cat ${a.category === c ? 'on' : ''}" data-act="add-cat" data-v="${esc(c)}">${iconSvg(iconKey({ category: c }), 18, 'currentColor')}${esc(c)}</button>`).join('')}</div>` : ''}
+      <input id="add-desc" class="input" placeholder="${a.split === 'transfer' ? 'Opis (opcjonalnie)' : 'Opis, np. kolacja w trattorii'}" value="${esc(a.desc)}" data-change="add-desc" list="add-sugg" enterkeyhint="done" autocomplete="off">
       <datalist id="add-sugg">${Array.from(new Set(S.expenses.map((e) => e.desc).filter(Boolean))).slice(0, 40).map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
+      <div class="flabel">${a.split === 'transfer' ? 'Kto oddał?' : 'Kto zapłacił?'}</div>
+      <div class="payers">${t.members.map((m) => `<button class="payer ${a.payer === m.id ? 'on' : ''}" data-act="add-payer" data-id="${m.id}">${avatar(m.id, 'sm')}<span>${esc(m.id === me ? 'Ty' : m.name)}</span></button>`).join('')}</div>
+      <button class="splitline" data-act="pick" data-v="split"><span class="k">Podział</span><b>${esc(splitLabel())}</b><span class="more">Zmień</span></button>
+      ${a.mode === 'edit' ? `<button class="btn danger sm del-exp" data-act="add-delete">${ico.trash} Usuń ten wydatek</button>` : ''}
     </div>
     <div class="keypad-wrap">
       <div class="keypad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0'].map((x) => `<button data-act="key" data-k="${x}">${x}</button>`).join('')}<button data-act="key" data-k="del" aria-label="Usuń cyfrę">${ico.bksp}</button></div>
-      <button class="btn primary big" id="add-save" data-act="add-save">${ico.check} ${a.mode === 'add' ? 'Zapisz wydatek' : 'Zapisz zmiany'}</button>
+      <button class="btn primary big" id="add-save" data-act="add-save">${saveLabel()}</button>
     </div>
   </div>`;
+  if (typing) { const d = $('#add-desc'); if (d) { d.focus(); try { d.setSelectionRange(d.value.length, d.value.length); } catch (e) {} } }
 }
 function updateAmount() {
   const el = $('#add-amount');
   if (!el) return;
   el.className = 'amount ' + amountClass();
-  el.innerHTML = `${amountText()}<small>${esc(sym(S.add.currency))}</small>`;
+  el.innerHTML = `${amountText()}<span class="caret"></span><small>${esc(sym(S.add.currency))}</small>`;
   $('#add-conv').innerHTML = convText();
+  const sv = $('#add-save'); if (sv) sv.innerHTML = saveLabel();
 }
 function keypress(k) {
   const a = S.add;
@@ -976,7 +1002,7 @@ function pushWidget() {
     .sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)).slice(0, 3)
     .map((e) => ({ t: `${e.desc || e.category || 'Wydatek'} · ${mNameFull(e.payer)}`, a: money(e.amount, e.currency) }));
   S.widgetData = {
-    style: ls.get('wstyle', 'blue'), code: t.id, title: t.title, closed: t.status === 'closed',
+    style: ls.get('wstyle', 'dark'), code: t.id, title: t.title, closed: t.status === 'closed',
     foreign: foreign(), foreignSym: sym(foreign()),
     balanceLabel: me ? 'Twój bilans' : 'Koszt wyjazdu',
     balanceText: me ? signed(bal) + ' zł' : fmt(b.total) + ' zł',
@@ -1149,7 +1175,8 @@ const actions = {
   'skip-me': () => { S.skipMe = true; render(); },
   filter: (el) => { S.filter = el.dataset.v; render(); },
   'settle-mode': (el) => { S.settleMode = el.dataset.v === 'pln' ? 'pln' : el.dataset.v; render(); },
-  add: () => openAdd(),
+  add: (el) => openAdd(el && el.dataset ? el.dataset.cur : undefined),
+  'skip-me-off': () => { S.skipMe = false; render(); },
   edit: (el) => openEdit(el.dataset.id),
   'copy-amt': (el) => copyText(el.dataset.v, 'Skopiowano kwotę ' + el.dataset.v),
   'mark-paid': (el) => {
@@ -1256,6 +1283,9 @@ const actions = {
     closeAdd(); toast('Usunięto');
   },
   key: (el) => keypress(el.dataset.k),
+  'show-keys': () => { const d = $('#add-desc'); if (d) d.blur(); $('.add')?.classList.remove('typing'); },
+  'add-cat': (el) => { readAddInputs(); S.add.category = S.add.category === el.dataset.v ? null : el.dataset.v; const sc = $('#add-scroll')?.scrollTop; const cx = $('.cats')?.scrollLeft; renderAdd(); if (sc != null) $('#add-scroll').scrollTop = sc; if (cx != null && $('.cats')) $('.cats').scrollLeft = cx; },
+  'add-payer': (el) => { readAddInputs(); S.add.payer = el.dataset.id; if (S.add.recipient === el.dataset.id) S.add.recipient = null; const sc = $('#add-scroll')?.scrollTop; renderAdd(); if (sc != null) $('#add-scroll').scrollTop = sc; },
   pick: (el) => openPicker(el.dataset.v),
   'pk-close': () => { closePicker(); renderAdd(); },
   'pk-done': () => { closePicker(); renderAdd(); },
@@ -1339,6 +1369,9 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key === 'Escape') closeAdd();
   }
 });
+document.addEventListener('focusin', (e) => { if (e.target && e.target.id === 'add-desc') { $('.add')?.classList.add('typing'); setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250); } });
+document.addEventListener('focusout', (e) => { if (e.target && e.target.id === 'add-desc') setTimeout(() => { if (document.activeElement?.id !== 'add-desc') $('.add')?.classList.remove('typing'); }, 120); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.id === 'add-desc') { e.preventDefault(); e.target.blur(); } });
 window.addEventListener('online', () => { S.online = true; scheduleRender(); });
 window.addEventListener('offline', () => { S.online = false; scheduleRender(); });
 window.addEventListener('hashchange', onRoute);
@@ -1365,7 +1398,13 @@ document.addEventListener('touchend', (e) => {
   const order = ['#/', '#/reports', '#/settings'];
   const cur = r.name === 'home' ? 0 : r.name === 'reports' ? 1 : r.name === 'settings' ? 2 : -1;
   if (cur >= 0) { const n = cur + (dx < 0 ? 1 : -1); if (n >= 0 && n < 3) go(order[n]); return; }
-  if (r.name === 'trip' && dx > 0) go(r.sub ? '#/t/' + r.code : '#/');
+  if (r.name === 'trip') {
+    const i = TRIP_TABS.indexOf(r.sub || '');
+    if (i < 0) { if (dx > 0) go('#/t/' + r.code); return; }
+    const n = i + (dx < 0 ? 1 : -1);
+    if (n < 0) go('#/');
+    else if (n < TRIP_TABS.length) go('#/t/' + r.code + (TRIP_TABS[n] ? '/' + TRIP_TABS[n] : ''));
+  }
 }, { passive: true });
 
 // ============================================================ start
