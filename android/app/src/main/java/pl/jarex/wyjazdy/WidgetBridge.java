@@ -154,6 +154,14 @@ public class WidgetBridge extends Plugin {
         call.resolve();
     }
 
+    /** Wydatki zapisane w okienku widżetu bez internetu – aplikacja wyśle je sama. */
+    @PluginMethod
+    public void takeQueue(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("items", QuickAddActivity.takeQueue(getContext()));
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void consumeAction(PluginCall call) {
         JSObject ret = new JSObject();

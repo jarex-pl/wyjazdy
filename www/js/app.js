@@ -1,8 +1,9 @@
 import { createStore, newId } from './store.js';
 import { computeBalances, settle, toPLN, round2, totalWeight, memberWeight } from './calc.js';
 import { COUNTRIES, CURRENCIES, DEFAULT_RATES, DEFAULT_CATEGORIES, sym, countryName, countryCurrency, iconKey, iconSvg, iconBg, iconColor } from './data.js';
-import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme, setWidgetLead, removeWidgetTrip } from './native.js';
+import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme, setWidgetLead, removeWidgetTrip, takeWidgetQueue } from './native.js';
 import { APP_BUILD } from './version.js';
+import { firebaseConfig } from './config.js';
 import { artSvg, tripPhoto, findPhoto, creditHtml, fileToCoverData } from './cover.js';
 import { sceneHtml, globeLogo, showIntro } from './scene.js';
 
@@ -1275,7 +1276,7 @@ function pushWidget() {
   const b = computeBalances(t, S.expenses);
   const bal = me ? round2(b.balance[me] || 0) : null;
   const recent = [...S.expenses].filter((e) => e.type !== 'transfer')
-    .sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)).slice(0, 3)
+    .sort((a, c) => (c.date || '').localeCompare(a.date || '') || (c.createdAt || 0) - (a.createdAt || 0)).slice(0, 5)
     .map((e) => ({ t: `${e.desc || e.category || 'Wydatek'} · ${mNameFull(e.payer)}`, a: money(e.amount, e.currency) }));
   S.widgetData = {
     style: ls.get('wstyle', 'navy'), code: t.id, title: t.title, closed: t.status === 'closed',
@@ -1287,7 +1288,11 @@ function pushWidget() {
     recent, owe: oweData(b, me),
     totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
-    count: S.expenses.length, quickCats: quickTiles(t).slice(0, 4), lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
+    count: S.expenses.length, quickCats: quickTiles(t).slice(0, 4),
+    members: (t.members || []).map((m) => ({ id: m.id, name: m.name })), me: me || '', rate: t.rate || 1,
+    cats: (t.categories && t.categories.length ? t.categories : DEFAULT_CATEGORIES).filter((c) => !/^inne$/i.test(c)).slice(0, 7).concat(['Inne']),
+    fbKey: store.mode === 'firebase' ? firebaseConfig.apiKey : '', fbProject: store.mode === 'firebase' ? firebaseConfig.projectId : '',
+    lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
   updateWidget(S.widgetData);
 }
@@ -1767,7 +1772,17 @@ boot();
 
 if (!isNative && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
+async function flushWidgetQueue() {
+  const items = await takeWidgetQueue();
+  if (!items.length) return;
+  for (const it of items) {
+    if (!it || !it.code || !it.exp) continue;
+    try { await store.addExpense(it.code, { ...it.exp, createdBy: S.uid }); } catch (e) { console.error(e); }
+  }
+  toast(items.length === 1 ? 'Wysłano wydatek dodany w widżecie' : `Wysłano ${items.length} wydatki dodane w widżecie`);
+}
 async function handleWidgetAction() {
+  flushWidgetQueue();
   const raw = await consumeWidgetAction();
   if (!raw) return;
   const [a, wcode] = String(raw).split('|');

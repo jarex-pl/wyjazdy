@@ -30,9 +30,9 @@ public final class WidgetUpdater {
     static final String KEY_CURRENT = "current";
     static final String ACTION_NEXT = "pl.jarex.wyjazdy.NEXT_TRIP";
 
-    private static final int[] ROW_IDS = {R.id.row1, R.id.row2, R.id.row3};
-    private static final int[] ROW_TITLE = {R.id.row1_title, R.id.row2_title, R.id.row3_title};
-    private static final int[] ROW_AMOUNT = {R.id.row1_amount, R.id.row2_amount, R.id.row3_amount};
+    private static final int[] ROW_IDS = {R.id.row1, R.id.row2, R.id.row3, R.id.row4, R.id.row5};
+    private static final int[] ROW_TITLE = {R.id.row1_title, R.id.row2_title, R.id.row3_title, R.id.row4_title, R.id.row5_title};
+    private static final int[] ROW_AMOUNT = {R.id.row1_amount, R.id.row2_amount, R.id.row3_amount, R.id.row4_amount, R.id.row5_amount};
 
     private WidgetUpdater() {}
 
@@ -202,7 +202,7 @@ public final class WidgetUpdater {
             String foreign = d.optString("foreign", "EUR");
             v.setViewVisibility(R.id.trip_add, View.VISIBLE);
             v.setTextViewText(R.id.trip_add, "PLN".equals(foreign) ? "+ Dodaj" : "+ " + d.optString("foreignSym", "€"));
-            v.setOnClickPendingIntent(R.id.trip_add, openApp(ctx, "PLN".equals(foreign) ? "PLN" : "foreign", 401));
+            v.setOnClickPendingIntent(R.id.trip_add, quickAdd(ctx, "PLN".equals(foreign) ? "PLN" : "foreign", null, 401));
         }
         mgr.updateAppWidget(widgetId, v);
     }
@@ -216,6 +216,16 @@ public final class WidgetUpdater {
         if (!code.isEmpty() || add != null) i.putExtra(EXTRA_ADD, act);
         return PendingIntent.getActivity(ctx, requestCode, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Okienko „Nowy wydatek” nad ekranem głównym (bez otwierania całej aplikacji). */
+    static PendingIntent quickAdd(Context ctx, String cur, String cat, int requestCode) {
+        Intent i = new Intent(ctx, QuickAddActivity.class);
+        i.setAction("pl.jarex.wyjazdy.QUICK_" + cur + "_" + (cat == null ? "" : cat) + "_" + requestCode);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        i.putExtra(QuickAddActivity.EXTRA_CUR, cur);
+        if (cat != null) i.putExtra(QuickAddActivity.EXTRA_CAT, cat);
+        return PendingIntent.getActivity(ctx, requestCode, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static void updateBalance(Context ctx, AppWidgetManager mgr, int widgetId) {
@@ -263,9 +273,9 @@ public final class WidgetUpdater {
             } else {
                 v.setViewVisibility(R.id.btn_foreign, View.VISIBLE);
                 v.setTextViewText(R.id.btn_foreign, "+ " + foreignSym);
-                v.setOnClickPendingIntent(R.id.btn_foreign, openApp(ctx, "foreign", 101));
+                v.setOnClickPendingIntent(R.id.btn_foreign, quickAdd(ctx, "foreign", null, 101));
             }
-            v.setOnClickPendingIntent(R.id.btn_pln, openApp(ctx, "PLN", 102));
+            v.setOnClickPendingIntent(R.id.btn_pln, quickAdd(ctx, "PLN", null, 102));
         }
 
         JSONArray recent = d.optJSONArray("recent");
@@ -326,9 +336,9 @@ public final class WidgetUpdater {
         } else {
             v.setViewVisibility(R.id.quick_foreign, View.VISIBLE);
             v.setTextViewText(R.id.quick_foreign, "+ " + foreignSym);
-            v.setOnClickPendingIntent(R.id.quick_foreign, openApp(ctx, "foreign", 201));
+            v.setOnClickPendingIntent(R.id.quick_foreign, quickAdd(ctx, "foreign", null, 201));
         }
-        v.setOnClickPendingIntent(R.id.quick_pln, openApp(ctx, "PLN", 202));
+        v.setOnClickPendingIntent(R.id.quick_pln, quickAdd(ctx, "PLN", null, 202));
         int[] catIds = {R.id.quick_cat1, R.id.quick_cat2, R.id.quick_cat3, R.id.quick_cat4};
         String[] defCats = {"Jedzenie", "Kawa", "Paliwo", "Zakupy"};
         JSONArray cats = d != null ? d.optJSONArray("quickCats") : null;
@@ -337,7 +347,7 @@ public final class WidgetUpdater {
             v.setTextViewText(catIds[i], c);
             v.setInt(catIds[i], "setBackgroundResource", st.btn2);
             v.setTextColor(catIds[i], st.btn2Text);
-            v.setOnClickPendingIntent(catIds[i], openApp(ctx, "cat~" + c, 210 + i));
+            v.setOnClickPendingIntent(catIds[i], quickAdd(ctx, "foreign", c, 210 + i));
         }
         v.setOnClickPendingIntent(R.id.quick_root, openApp(ctx, null, 200));
         mgr.updateAppWidget(widgetId, v);

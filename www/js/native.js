@@ -19,6 +19,12 @@ export function removeWidgetTrip(code) {
   Widget.remove({ code }).catch(() => {});
 }
 
+/** Wydatki dodane w okienku widżetu, których nie udało się od razu wysłać. */
+export async function takeWidgetQueue() {
+  if (!Widget) return [];
+  try { const r = await Widget.takeQueue(); return Array.isArray(r.items) ? r.items : []; } catch (e) { return []; }
+}
+
 export function clearWidget() {
   if (!Widget) return;
   Widget.clear().catch(() => {});

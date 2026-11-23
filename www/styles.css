@@ -865,3 +865,21 @@ body::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 
 .xf-who .xf-p { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: none; max-width: 100%; }
 .xf-who .xf-p b { overflow: hidden; text-overflow: ellipsis; }
 .xf-who .xf-p { flex-direction: row; text-align: left; }
+
+/* pulpit wyjazdu – proporcjonalne rozmiary (także przy dużej czcionce systemowej) */
+.hero { height: calc(230px + var(--st)); }
+.hero .title { bottom: 14px; }
+.hero .title h2 { font-size: 28px; line-height: 1.12; }
+.hero .title .eyebrow { font-size: 11px; letter-spacing: .14em; }
+.hero .title .meta { font-size: 13.5px; margin-top: 6px; }
+.bal { padding-top: 0; }
+.bal .lbl { font-size: 11px; }
+.bal .lbl span { font-size: 13px; }
+.bal .big { font-size: 36px; margin-top: 2px; }
+.bal .big small { font-size: .5em; }
+.bal .note { font-size: 14px; margin-top: 4px; }
+.quick2 .btn { min-height: 52px; font-size: 16px; }
+.stats > div, .stats > div + div { padding: 10px; }
+.stats span { font-size: 12px; }
+.stats b { font-size: 15.5px; }
+.page.flush { gap: 12px; }

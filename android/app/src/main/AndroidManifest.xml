@@ -25,6 +25,15 @@
 
         </activity>
 
+        <activity
+            android:name=".QuickAddActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity="pl.jarex.wyjazdy.quickadd"
+            android:noHistory="true"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            android:exported="false" />
+
         <receiver
             android:name=".BalanceWidget"
             android:label="@string/widget_balance_name"
