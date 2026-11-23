@@ -28,8 +28,8 @@
         android:text="+ €"
         android:textSize="22sp"
         android:fontFamily="sans-serif-black"
-        android:textColor="#18130A"
-        android:background="@drawable/wbtn_gold" />
+        android:textColor="#FFFFFF"
+        android:background="@drawable/wbtn_accent" />
 
     <TextView
         android:id="@+id/quick_pln"
@@ -42,5 +42,5 @@
         android:textSize="22sp"
         android:fontFamily="sans-serif-black"
         android:textColor="#FFFFFF"
-        android:background="@drawable/wbtn_goldline" />
+        android:background="@drawable/wbtn_gray_d" />
 </LinearLayout>

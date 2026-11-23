@@ -33,21 +33,21 @@ public final class WidgetUpdater {
         Style s = new Style();
         int white = Color.WHITE;
         if ("light".equals(n)) {
-            s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_gold; s.btn2 = R.drawable.wbtn_goldline_dark;
-            s.btn1Text = Color.parseColor("#18130A"); s.btn2Text = Color.parseColor("#17140E");
-            s.title = Color.parseColor("#6F685B"); s.label = Color.parseColor("#6F685B");
-            s.value = Color.parseColor("#17140E"); s.pos = Color.parseColor("#17140E"); s.neg = Color.parseColor("#B0452F");
-            s.row = Color.parseColor("#17140E");
+            s.bg = R.drawable.wbg_light; s.btn1 = R.drawable.wbtn_accent_l; s.btn2 = R.drawable.wbtn_gray_l;
+            s.btn1Text = white; s.btn2Text = Color.parseColor("#1B1C1F");
+            s.title = Color.parseColor("#64656B"); s.label = Color.parseColor("#64656B");
+            s.value = Color.parseColor("#1B1C1F"); s.pos = Color.parseColor("#1E8A57"); s.neg = Color.parseColor("#C9483B");
+            s.row = Color.parseColor("#1B1C1F");
             return s;
         }
         if ("dark".equals(n) || "clear".equals(n)) {
             s.bg = "dark".equals(n) ? R.drawable.wbg_dark : R.drawable.wbg_clear;
-            s.btn1 = R.drawable.wbtn_gold; s.btn2 = R.drawable.wbtn_goldline;
-            s.btn1Text = Color.parseColor("#18130A"); s.btn2Text = Color.parseColor("#F3EEE4");
-            s.title = Color.parseColor("#A8A296"); s.label = Color.parseColor("#A8A296");
-            s.value = Color.parseColor("#F3EEE4"); s.pos = Color.parseColor("#F3EEE4"); s.neg = Color.parseColor("#E79A86");
-            s.row = Color.parseColor("#F3EEE4");
-            if ("clear".equals(n)) { s.title = s.label = Color.parseColor("#E6FFFFFF"); s.value = s.pos = s.row = Color.WHITE; s.neg = Color.parseColor("#FFD2CC"); }
+            s.btn1 = R.drawable.wbtn_accent; s.btn2 = R.drawable.wbtn_gray_d;
+            s.btn1Text = white; s.btn2Text = Color.parseColor("#F2F2F0");
+            s.title = Color.parseColor("#A0A1A7"); s.label = Color.parseColor("#A0A1A7");
+            s.value = Color.parseColor("#F2F2F0"); s.pos = Color.parseColor("#5CC08E"); s.neg = Color.parseColor("#E5776B");
+            s.row = Color.parseColor("#F2F2F0");
+            if ("clear".equals(n)) { s.title = s.label = Color.parseColor("#E6FFFFFF"); s.value = s.row = white; s.pos = Color.parseColor("#B8FFE0"); s.neg = Color.parseColor("#FFD2CC"); }
             return s;
         }
         s.btn1 = R.drawable.wbtn_white; s.btn2 = R.drawable.wbtn_glass; s.btn2Text = white;

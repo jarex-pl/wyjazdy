@@ -26,7 +26,7 @@ export const sym = (c) => SYMBOLS[c] || c;
 export const countryName = (code) => (COUNTRIES.find((c) => c[0] === code) || [code, code])[1];
 export const countryCurrency = (code) => (COUNTRIES.find((c) => c[0] === code) || [0, 0, 'EUR'])[2];
 
-export const DEFAULT_CATEGORIES = ['Jedzenie', 'Restauracja', 'Kawa', 'Zakupy', 'Paliwo', 'Autostrada', 'Parking', 'Nocleg', 'Bilety lotnicze', 'Transport', 'Atrakcje', 'Inne'];
+export const DEFAULT_CATEGORIES = ['Jedzenie', 'Kawa', 'Zakupy', 'Paliwo', 'Nocleg', 'Bilety', 'Atrakcje', 'Restauracja', 'Transport', 'Autostrada', 'Parking', 'Inne'];
 
 // Ikony kategorii (ścieżki SVG 24×24, obrys) i żywe kolory (ikony, wykres).
 const ICONS = {
