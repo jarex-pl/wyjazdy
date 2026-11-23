@@ -7,7 +7,7 @@
     <string name="widget_balance_name">Bilans wyjazdu</string>
     <string name="widget_balance_desc">Twój bilans, ostatnie wydatki i szybkie dodawanie</string>
     <string name="widget_quick_name">Szybki wydatek</string>
-    <string name="widget_quick_desc">Dwa przyciski: dodaj w walucie albo w złotówkach</string>
+    <string name="widget_quick_desc">Dodaj wydatek jednym stuknięciem: w walucie, w złotówkach albo od razu z kategorią</string>
     <string name="widget_owe_name">Do oddania</string>
     <string name="widget_owe_desc">Kto komu oddaje pieniądze</string>
     <string name="widget_trip_name">Wyjazd ze zdjęciem</string>

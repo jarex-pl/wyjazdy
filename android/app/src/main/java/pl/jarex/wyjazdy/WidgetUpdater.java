@@ -329,6 +329,16 @@ public final class WidgetUpdater {
             v.setOnClickPendingIntent(R.id.quick_foreign, openApp(ctx, "foreign", 201));
         }
         v.setOnClickPendingIntent(R.id.quick_pln, openApp(ctx, "PLN", 202));
+        int[] catIds = {R.id.quick_cat1, R.id.quick_cat2, R.id.quick_cat3, R.id.quick_cat4};
+        String[] defCats = {"Jedzenie", "Kawa", "Paliwo", "Zakupy"};
+        JSONArray cats = d != null ? d.optJSONArray("quickCats") : null;
+        for (int i = 0; i < catIds.length; i++) {
+            String c = cats != null && cats.optString(i, "").length() > 0 ? cats.optString(i, "") : defCats[i];
+            v.setTextViewText(catIds[i], c);
+            v.setInt(catIds[i], "setBackgroundResource", st.btn2);
+            v.setTextColor(catIds[i], st.btn2Text);
+            v.setOnClickPendingIntent(catIds[i], openApp(ctx, "cat~" + c, 210 + i));
+        }
         v.setOnClickPendingIntent(R.id.quick_root, openApp(ctx, null, 200));
         mgr.updateAppWidget(widgetId, v);
     }

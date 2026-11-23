@@ -215,6 +215,7 @@ function watch(code) {
     if (trip) rememberTrip(trip);
     scheduleRender();
     if (S.pendingAdd && trip) { const c = S.pendingAdd; S.pendingAdd = null; quickCur(c); }
+    if (S.pendingCat && trip) { const c = S.pendingCat; S.pendingCat = null; setTimeout(() => addWithCat(c), 50); }
   }, (e) => { S.loading = false; S.trip = null; fail(e); scheduleRender(); }));
   S.unsub.push(store.watchExpenses(code, (list, meta) => {
     S.expenses = list;
@@ -602,8 +603,8 @@ function viewQuick() {
   const b = computeBalances(t, S.expenses);
   const my = me ? round2(b.balance[me] || 0) : null;
   const head = `<header class="qtop"><a class="ibtn plain" href="#/" aria-label="Start">${ico.back}</a>
-      <div class="grow"><b>${esc(t.title)}</b><span>${esc(peopleLabel(t))}</span></div>
-      ${me ? `<a class="balp" href="#/t/${esc(t.id)}/settle"><span>Twój bilans</span><b class="${my > 0.009 ? 'pos-t' : my < -0.009 ? 'neg-t' : ''}">${signed(my)} zł</b></a>` : ''}</header>`;
+      <div class="grow"><b class="qtitle">${flagImg(t.country)} ${esc(t.title)}</b>
+        <span class="qsub">${esc(peopleLabel(t))}${me ? ` · <a href="#/t/${esc(t.id)}/settle">Twój bilans <b class="${my > 0.009 ? 'pos-t' : my < -0.009 ? 'neg-t' : ''}">${signed(my)}${NB}zł</b></a>` : ''}</span></div></header>`;
   if (!isOpen()) return `<main class="page qa tab-pad">${head}<div class="banner ok">${ico.check}<span><b>Wyjazd rozliczony.</b> Nie można już dodawać wydatków.</span></div>
     <div class="closed-note"><a class="btn primary" href="#/t/${esc(t.id)}/settle">Zobacz rozliczenie</a></div></main>${tripTabs('')}`;
   const q = qState();
@@ -641,6 +642,12 @@ function quickSave(cat) {
   q.amount = ''; qUpdate();
   if (navigator.vibrate) navigator.vibrate(20);
   undoToast(`${cat} · ${money(amount, q.currency)}`, `Zapisano · ${mName(q.payer)} · po równo`, id);
+}
+function addWithCat(cat) {
+  if (!S.trip || !isOpen()) return;
+  closeAdd();
+  openAdd('foreign');
+  if (S.add) { S.add.category = cat; S.add.desc = ''; renderAdd(); }
 }
 function quickCur(c) {
   if (!S.trip) return;
@@ -690,7 +697,7 @@ function viewDashboard() {
       <div><span>Na osobę</span><b>${fmt0(b.total / (people || 1))} zł</b></div>
       ${f !== 'PLN' ? `<div><span>W ${f === 'EUR' ? 'euro' : esc(f)}</span><b>${fmt0(sumF)} ${esc(sym(f))}</b></div>` : `<div><span>Pozycji</span><b>${S.expenses.length}</b></div>`}
     </div>
-    ${recent.length ? `<div class="sec-title">Ostatnie <a href="#/t/${esc(t.id)}/expenses">Wszystkie (${S.expenses.length}) ›</a></div>
+    ${recent.length ? `<div class="sec-title">Ostatnie <a href="#/t/${esc(t.id)}/expenses">Wszystkie ›</a></div>
       ${groupByDay(recent)}
       <p class="hint">Stuknij wydatek, aby go poprawić lub usunąć</p>` : `<div class="empty">Brak wydatków.<br>Stuknij „+ ${f === 'PLN' ? 'Dodaj wydatek' : f === 'EUR' ? 'Euro' : esc(f)}”, żeby dodać pierwszy.</div>`}
   </main>${tripTabs('')}`;
@@ -731,7 +738,7 @@ function viewExpenses() {
   list = sortedExp(list);
   return `
   <main class="page tab-pad">
-    ${pageHead(`Lista <span class="muted" style="font-size:.6em">${S.expenses.length}</span>`)}
+    ${pageHead('Lista wydatków')}
     <div class="sum3"><div><span>Razem</span><b>${fmt0(computeBalances(S.trip, S.expenses).total)} zł</b></div>${shareCells(S.trip, computeBalances(S.trip, S.expenses).total)}</div>
     ${me ? `<div class="seg"><button class="${S.filter === 'all' ? 'on' : ''}" data-act="filter" data-v="all">Wszystkie</button><button class="${S.filter === 'mine' ? 'on' : ''}" data-act="filter" data-v="mine">Dotyczące mnie</button></div>` : ''}
     ${list.length ? groupByDay(list) + '<p class="hint">Stuknij wydatek, aby go poprawić lub usunąć</p>' : `<div class="empty">Brak wydatków.<br><a href="#/t/${esc(S.trip.id)}">Dodaj pierwszy ›</a></div>`}
@@ -756,12 +763,11 @@ function xferCard(x, unit, i) {
   const sub = unit === 'PLN' ? '' : `≈ ${money(x.amount * t.rate, 'PLN')}`;
   return `
   <section class="xfer" style="animation-delay:${i * 70}ms">
-    <div class="xf-row">${avatar(x.from, 'md')}<span class="xf-n"><b>${esc(mNameFull(x.from))}${meTag(x.from)}</b><span>oddaje</span></span></div>
-    <div class="xf-mid">${ARROW}<span class="xf-amt">${money(x.amount, unit)}${sub ? `<small>${sub}</small>` : ''}</span></div>
-    <div class="xf-row">${avatar(x.to, 'md')}<span class="xf-n"><b>${esc(mNameFull(x.to))}${meTag(x.to)}</b><span>otrzymuje</span></span></div>
-    <div class="xf-acts">
-      <button class="btn sm" data-act="copy-amt" data-v="${esc(fmt(x.amount))}">${svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', 18)} Kopiuj</button>
-      ${isOpen() ? `<button class="btn sm okb" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.8)} Oddane</button>` : ''}
+    <div class="xf-who"><span class="xf-p">${avatar(x.from, 'sm')}<b>${esc(mNameFull(x.from))}${meTag(x.from)}</b></span><span class="xf-to">${svg('<path d="M5 12h13M13 6l6 6-6 6"/>', 16, 2.6)}</span><span class="xf-p">${avatar(x.to, 'sm')}<b>${esc(mNameFull(x.to))}${meTag(x.to)}</b></span></div>
+    <div class="xf-line">
+      <span class="xf-amt">${money(x.amount, unit)}${sub ? `<small>${sub}</small>` : ''}</span>
+      <button class="xf-copy" data-act="copy-amt" data-v="${esc(fmt(x.amount))}" aria-label="Kopiuj kwotę">${svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', 18)}</button>
+      ${isOpen() ? `<button class="xf-ok2" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 16, 3)} Oddane</button>` : ''}
     </div>
   </section>`;
 }
@@ -771,11 +777,14 @@ function balCard(m, lines, paid, share, totalPLN) {
   const sumPLN = totalPLN != null ? totalPLN : main.v;
   const cls = sumPLN > 0.009 ? 'pos' : sumPLN < -0.009 ? 'neg' : 'zero';
   const word = sumPLN > 0.009 ? 'otrzyma' : sumPLN < -0.009 ? 'odda' : 'na zero';
+  const row = (label, v, cur, k = '') => `<div class="bc-l ${k} ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : ''}"><span>${label}</span><b>${Math.abs(v) > 0.009 ? signed(v) : '0,00'}${NB}${esc(sym(cur))}</b></div>`;
   return `<div class="balcard ${cls}">
-    <div class="bc-top">${avatar(m.id, 'md')}<span class="bc-name"><b>${esc(m.name)}${meTag(m.id)}</b><span class="bc-word">${word}${memberWeight(m) > 1 ? ' · para' : ''}</span></span></div>
-    <div class="bc-lines">${lines.map((l) => `<div class="bc-l ${l.v > 0.009 ? 'pos' : l.v < -0.009 ? 'neg' : ''}"><span>${l.cur === 'PLN' ? 'w złotówkach' : 'w ' + (l.cur === 'EUR' ? 'euro' : esc(l.cur))}</span><b>${l.v ? signed(l.v) : '0,00'}${NB}${esc(sym(l.cur))}</b></div>`).join('')}
-      ${totalPLN != null ? `<div class="bc-sum">razem po przeliczeniu <b>${signed(totalPLN)}${NB}zł</b></div>` : ''}</div>
-    <div class="bc-grid"><div><span>Zapłacili</span><b>${money(paid, 'PLN')}</b></div><div><span>Udział w kosztach</span><b>${money(share, 'PLN')}</b></div></div>
+    <div class="bc-top">${avatar(m.id, 'sm')}<span class="bc-name"><b>${esc(m.name)}${meTag(m.id)}</b></span><span class="bc-word">${word}</span></div>
+    <div class="bc-lines">
+      ${lines.map((l) => row(l.cur === 'PLN' ? 'w złotówkach' : 'w ' + (l.cur === 'EUR' ? 'euro' : esc(l.cur)), l.v, l.cur)).join('')}
+      ${totalPLN != null ? row('razem w zł', totalPLN, 'PLN', 'sum') : ''}
+    </div>
+    <div class="bc-foot">Zapłacili <b>${money(paid, 'PLN')}</b> · udział <b>${money(share, 'PLN')}</b></div>
   </div>`;
 }
 function viewSettle() {
@@ -786,7 +795,6 @@ function viewSettle() {
   const bAll = computeBalances(t, S.expenses);
   const done = S.expenses.filter((e) => e.type === 'transfer').sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
   const allTr = settle(bAll.balance).length;
-  const plural = (n) => n + (n === 1 ? ' przelew' : n < 5 ? ' przelewy' : ' przelewów');
   const settled = `<section class="xfer done"><div class="xf-ok">${ico.check}</div><b>Wszyscy są rozliczeni</b><span>Nikt nikomu nic nie oddaje.</span></section>`;
   let body = '';
   if (mode === 'split') {
@@ -796,12 +804,13 @@ function viewSettle() {
     body = `
     <p class="settle-note">Co płacone w ${f === 'EUR' ? 'euro' : esc(f)} – oddajecie w ${f === 'EUR' ? 'euro' : esc(f)}. Co w złotówkach – w złotówkach.</p>
     ${!trF.length && !trP.length ? settled : ''}
-    ${trF.length ? `<div class="cur-head"><span class="cur-badge">${esc(sym(f))}</span><b>Do oddania w ${f === 'EUR' ? 'euro' : esc(f)}</b><span class="muted small">${plural(trF.length)}</span></div>${trF.map((x, i) => xferCard(x, f, i)).join('')}` : ''}
-    ${trP.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Do oddania w zł</b><span class="muted small">${plural(trP.length)}</span></div>${trP.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : ''}
+    ${trF.length ? `<div class="cur-head"><span class="cur-badge">${esc(sym(f))}</span><b>Do oddania w ${f === 'EUR' ? 'euro' : esc(f)}</b></div>${trF.map((x, i) => xferCard(x, f, i)).join('')}` : ''}
+    ${trP.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Do oddania w zł</b></div>${trP.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : ''}
     <section class="sumpln">
       <div class="sp-h">Podsumowanie w złotówkach</div>
       ${trAll.length ? trAll.map((x) => `<div class="sp-r"><span>${esc(mNameFull(x.from))} → ${esc(mNameFull(x.to))}</span><b>${money(x.amount, 'PLN')}</b></div>`).join('') : '<div class="sp-r"><span>Wszyscy na zero</span><b>0,00 zł</b></div>'}
-      <div class="sp-r tot"><span>Wydatki razem (kurs ${fmtRate(t.rate)})</span><b>${money(bAll.total, 'PLN')}</b></div>
+      <div class="sp-r tot"><span>Wydatki razem</span><b>${money(bAll.total, 'PLN')}</b></div>
+      <div class="sp-k">kurs 1 ${esc(f)} = ${fmtRate(t.rate)} zł</div>
     </section>
     <div class="sec-title">Bilans uczestników</div>
     <div class="balcards">${(t.members || []).map((m) => balCard(m,
@@ -810,7 +819,7 @@ function viewSettle() {
   } else {
     const tr = settle(bAll.balance);
     body = `
-    ${tr.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Kto komu oddaje</b><span class="muted small">${plural(tr.length)}</span></div>${tr.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : settled}
+    ${tr.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Kto komu oddaje</b></div>${tr.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : settled}
     <div class="sec-title">Bilans uczestników</div>
     <div class="balcards">${(t.members || []).map((m) => balCard(m, [{ v: round2(bAll.balance[m.id] || 0), cur: 'PLN' }], bAll.paid[m.id] || 0, bAll.share[m.id] || 0, null)).join('')}
       <div class="bc-total"><span>Wydatki razem</span><b>${money(bAll.total, 'PLN')}</b></div></div>`;
@@ -1278,7 +1287,7 @@ function pushWidget() {
     recent, owe: oweData(b, me),
     totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
-    count: S.expenses.length, lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
+    count: S.expenses.length, quickCats: quickTiles(t).slice(0, 4), lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
   updateWidget(S.widgetData);
 }
@@ -1765,6 +1774,11 @@ async function handleWidgetAction() {
   const last = wcode || leadCode() || ls.get('lastTrip', null);
   if (!last) { toast('Najpierw otwórz albo utwórz wyjazd'); return; }
   if (a === 'open') { if (S.route.code !== last) go('#/t/' + last + '/dash'); return; }
+  if (a.startsWith('cat~')) {
+    const cat = a.slice(4);
+    if (S.route.code === last && S.trip) { addWithCat(cat); return; }
+    S.pendingCat = cat; go('#/t/' + last); return;
+  }
   const cur = a === 'PLN' ? 'PLN' : 'foreign';
   if (S.route.code === last && S.trip) { closeAdd(); quickCur(cur); return; }
   S.pendingAdd = cur;
