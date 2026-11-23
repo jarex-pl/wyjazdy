@@ -14,9 +14,11 @@ const WEB_URL = 'https://jarex-pl.github.io/wyjazdy/';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const NF = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
-const fmt = (n) => NF.format(round2(n || 0)).replace(/ /g, ' ');
-const fmt0 = (n) => Math.round(n || 0).toLocaleString('pl-PL').replace(/ /g, ' ');
-const money = (n, cur) => `${fmt(n)} ${sym(cur)}`;
+const NB = '\u00A0';
+const grp = (int) => String(int).replace(/\B(?=(\d{3})+(?!\d))/g, NB);
+const fmt = (n) => { const v = round2(n || 0); const [i, d] = Math.abs(v).toFixed(2).split('.'); return (v < 0 ? '-' : '') + grp(i) + ',' + d; };
+const fmt0 = (n) => { const v = Math.round(n || 0); return (v < 0 ? '-' : '') + grp(Math.abs(v)); };
+const money = (n, cur) => `${fmt(n)}${NB}${sym(cur)}`;
 const signed = (n) => (n > 0.009 ? '+' : n < -0.009 ? '−' : '') + fmt(Math.abs(n));
 const fmtRate = (r) => (r >= 0.1 ? r.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : r.toLocaleString('pl-PL', { maximumSignificantDigits: 4 }));
 const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
@@ -78,7 +80,7 @@ function applyTheme() {
   const t = resolvedTheme();
   document.documentElement.dataset.theme = t;
   const m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute('content', t === 'dark' ? '#0A1838' : '#EEF3FC');
+  if (m) m.setAttribute('content', t === 'dark' ? '#0F1115' : '#EEF3FC');
   setBarsTheme(t === 'dark');
 }
 applyTheme();
@@ -106,7 +108,7 @@ function fail(e) {
 const store = createStore();
 const S = {
   uid: null, route: { name: 'home' }, trip: null, expenses: [], meta: { pending: false }, tripMeta: null,
-  unsub: [], watching: null, filter: 'all', settleMode: 'pln', repTab: 0, newTrip: null, adminKey: null, online: navigator.onLine,
+  unsub: [], watching: null, filter: 'all', settleMode: 'split', repTab: 0, newTrip: null, adminKey: null, online: navigator.onLine,
   add: null, picker: null, showAdminKey: false, joinOpen: false
 };
 const isAdmin = () => !!(S.trip && (S.trip.admins || []).includes(S.uid));
@@ -134,7 +136,7 @@ const unitLabel = (w) => (w === 2 ? 'Na parę' : w === 1 ? 'Na osobę' : `Na ${w
 function shareCells(t, total) {
   const ws = [...new Set((t.members || []).map(memberWeight))].sort((a, c) => c - a).slice(0, 2);
   const per = total / (totalWeight(t) || 1);
-  return ws.map((w) => `<div><span>${unitLabel(w)}</span><b>${fmt0(per * w)} zł</b></div>`).join('');
+  return ws.map((w) => `<div><span>${unitLabel(w)}</span><b>${fmt0(per * w)} zł</b></div>`).join('');
 }
 function memberTag(m) { const w = memberWeight(m); return w === 2 ? '<span class="tag">PARA</span>' : w > 2 ? `<span class="tag">${w} OS.</span>` : ''; }
 const paidVerb = (m) => (memberWeight(m) > 1 ? 'zapłacili' : 'zapłacił(a)');
@@ -365,7 +367,7 @@ function tripCard(h, i) {
         <span class="tc-name">${flagImg(h.country)}<b>${esc(h.title)}</b>${h.code === leadCode() ? '<i class="lead" title="Wiodący">★</i>' : ''}</span>
         ${meta[0] ? `<span class="tc-meta">${ico.cal}${esc(meta[0])}</span>` : ''}
         ${meta[1] ? `<span class="tc-meta">${ico.users}${esc(meta[1])}</span>` : ''}
-        <b class="tc-amt">${h.total != null ? fmt(h.total) + ' zł' : '—'}</b>
+        <b class="tc-amt">${h.total != null ? fmt(h.total) + ' zł' : '—'}</b>
         ${statusPill(h)}
       </span>
     </a>
@@ -396,9 +398,9 @@ function viewHome() {
         </div>
       </a>
       <a class="feat-stats" href="#/t/${esc(cur.code)}/settle">
-        <span><small>Twój bilans</small><b class="${cur.my > 0.009 ? 'pos-t' : cur.my < -0.009 ? 'neg-t' : ''}">${cur.my != null ? (cur.my > 0.5 ? '+' : cur.my < -0.5 ? '−' : '') + fmt0(Math.abs(cur.my)) + ' zł' : '—'}</b></span>
-        <span><small>Wydatki</small><b>${cur.total != null ? fmt0(cur.total) + ' zł' : '—'}</b></span>
-        <span><small>Na osobę</small><b>${cur.total != null && cur.people ? fmt0(cur.total / cur.people) + ' zł' : '—'}</b></span>
+        <span><small>Twój bilans</small><b class="${cur.my > 0.009 ? 'pos-t' : cur.my < -0.009 ? 'neg-t' : ''}">${cur.my != null ? (cur.my > 0.5 ? '+' : cur.my < -0.5 ? '−' : '') + fmt0(Math.abs(cur.my)) + ' zł' : '—'}</b></span>
+        <span><small>Wydatki</small><b>${cur.total != null ? fmt0(cur.total) + ' zł' : '—'}</b></span>
+        <span><small>Na osobę</small><b>${cur.total != null && cur.people ? fmt0(cur.total / cur.people) + ' zł' : '—'}</b></span>
       </a>
       <a class="btn primary big" href="#/t/${esc(cur.code)}">${cur.status === 'closed' ? 'Otwórz wyjazd' : `${ico.plus} Dodaj wydatek`}</a>
     </section>
@@ -559,13 +561,13 @@ function qState() {
 function qText(q) {
   const raw = q.amount || '0';
   const [i, d] = raw.split(',');
-  const int = Number(i || 0).toLocaleString('pl-PL').replace(/ /g, ' ');
+  const int = grp(Number(i || 0));
   return d !== undefined ? int + ',' + d : int;
 }
 const qValue = (q) => { const v = parseFloat((q.amount || '0').replace(',', '.')); return isNaN(v) ? 0 : v; };
 function qConv(q) {
   if (foreign() === 'PLN') return '&nbsp;';
-  if (q.currency === 'PLN') return qValue(q) ? `≈ ${money(qValue(q) / S.trip.rate, foreign())}` : `kurs ${fmtRate(S.trip.rate)} zł`;
+  if (q.currency === 'PLN') return qValue(q) ? `≈ ${money(qValue(q) / S.trip.rate, foreign())}` : `kurs ${fmtRate(S.trip.rate)} zł`;
   return `≈ ${money(qValue(q) * S.trip.rate, 'PLN')} · kurs ${fmtRate(S.trip.rate)}`;
 }
 function qClass(q) { const n = qText(q).length; return (n > 9 ? 'xlong' : n > 6 ? 'long' : '') + (q.amount ? '' : ' zero'); }
@@ -601,7 +603,7 @@ function viewQuick() {
   const my = me ? round2(b.balance[me] || 0) : null;
   const head = `<header class="qtop"><a class="ibtn plain" href="#/" aria-label="Start">${ico.back}</a>
       <div class="grow"><b>${esc(t.title)}</b><span>${esc(peopleLabel(t))}</span></div>
-      ${me ? `<a class="balp" href="#/t/${esc(t.id)}/settle"><span>Twój bilans</span><b class="${my > 0.009 ? 'pos-t' : my < -0.009 ? 'neg-t' : ''}">${signed(my)} zł</b></a>` : ''}</header>`;
+      ${me ? `<a class="balp" href="#/t/${esc(t.id)}/settle"><span>Twój bilans</span><b class="${my > 0.009 ? 'pos-t' : my < -0.009 ? 'neg-t' : ''}">${signed(my)} zł</b></a>` : ''}</header>`;
   if (!isOpen()) return `<main class="page qa tab-pad">${head}<div class="banner ok">${ico.check}<span><b>Wyjazd rozliczony.</b> Nie można już dodawać wydatków.</span></div>
     <div class="closed-note"><a class="btn primary" href="#/t/${esc(t.id)}/settle">Zobacz rozliczenie</a></div></main>${tripTabs('')}`;
   const q = qState();
@@ -684,8 +686,8 @@ function viewDashboard() {
       <div class="note">${note}</div></a>` : `<button class="btn outline" data-act="skip-me-off">Wybierz, kim jesteś</button>`}
     ${quickAdd()}
     <div class="stats">
-      <div><span>Wydatki</span><b>${fmt0(b.total)} zł</b></div>
-      <div><span>Na osobę</span><b>${fmt0(b.total / (people || 1))} zł</b></div>
+      <div><span>Wydatki</span><b>${fmt0(b.total)} zł</b></div>
+      <div><span>Na osobę</span><b>${fmt0(b.total / (people || 1))} zł</b></div>
       ${f !== 'PLN' ? `<div><span>W ${f === 'EUR' ? 'euro' : esc(f)}</span><b>${fmt0(sumF)} ${esc(sym(f))}</b></div>` : `<div><span>Pozycji</span><b>${S.expenses.length}</b></div>`}
     </div>
     ${recent.length ? `<div class="sec-title">Ostatnie <a href="#/t/${esc(t.id)}/expenses">Wszystkie (${S.expenses.length}) ›</a></div>
@@ -699,7 +701,7 @@ function groupByDay(list) {
   for (const e of list) { const g = groups[groups.length - 1]; if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] }); }
   return groups.map((g) => {
     const sum = g.items.filter((e) => (e.type || 'shared') !== 'transfer').reduce((s, e) => s + toPLN(e, S.trip.rate), 0);
-    return `<div class="day"><span>${esc(dayLabel(g.date || todayISO()))}</span>${sum ? `<b>${fmt0(sum)} zł</b>` : ''}</div><div class="xlist">${g.items.map(expenseRow).join('')}</div>`;
+    return `<div class="day"><span>${esc(dayLabel(g.date || todayISO()))}</span>${sum ? `<b>${fmt0(sum)} zł</b>` : ''}</div><div class="xlist">${g.items.map(expenseRow).join('')}</div>`;
   }).join('');
 }
 
@@ -730,7 +732,7 @@ function viewExpenses() {
   return `
   <main class="page tab-pad">
     ${pageHead(`Lista <span class="muted" style="font-size:.6em">${S.expenses.length}</span>`)}
-    <div class="sum3"><div><span>Razem</span><b>${fmt0(computeBalances(S.trip, S.expenses).total)} zł</b></div>${shareCells(S.trip, computeBalances(S.trip, S.expenses).total)}</div>
+    <div class="sum3"><div><span>Razem</span><b>${fmt0(computeBalances(S.trip, S.expenses).total)} zł</b></div>${shareCells(S.trip, computeBalances(S.trip, S.expenses).total)}</div>
     ${me ? `<div class="seg"><button class="${S.filter === 'all' ? 'on' : ''}" data-act="filter" data-v="all">Wszystkie</button><button class="${S.filter === 'mine' ? 'on' : ''}" data-act="filter" data-v="mine">Dotyczące mnie</button></div>` : ''}
     ${list.length ? groupByDay(list) + '<p class="hint">Stuknij wydatek, aby go poprawić lub usunąć</p>' : `<div class="empty">Brak wydatków.<br><a href="#/t/${esc(S.trip.id)}">Dodaj pierwszy ›</a></div>`}
   </main>${tripTabs('expenses')}`;
@@ -746,58 +748,81 @@ function dayLabel(iso) {
 }
 
 // ------------------------------------------------------------ rozliczenie
+const ARROW = '<svg class="xf-arr" width="46" height="20" viewBox="0 0 46 20" fill="none" aria-hidden="true"><path d="M2 10h38M33 3l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function meTag(id) { return id === meId() ? ' <em>(Ty)</em>' : ''; }
+/** Karta jednego przelewu: kto → komu, kwota w walucie, pod spodem mniejsza kwota w zł. */
+function xferCard(x, unit, i) {
+  const t = S.trip;
+  const sub = unit === 'PLN' ? '' : `≈ ${money(x.amount * t.rate, 'PLN')}`;
+  return `
+  <section class="xfer" style="animation-delay:${i * 70}ms">
+    <div class="xf-row">${avatar(x.from, 'md')}<span class="xf-n"><b>${esc(mNameFull(x.from))}${meTag(x.from)}</b><span>oddaje</span></span></div>
+    <div class="xf-mid">${ARROW}<span class="xf-amt">${money(x.amount, unit)}${sub ? `<small>${sub}</small>` : ''}</span></div>
+    <div class="xf-row">${avatar(x.to, 'md')}<span class="xf-n"><b>${esc(mNameFull(x.to))}${meTag(x.to)}</b><span>otrzymuje</span></span></div>
+    <div class="xf-acts">
+      <button class="btn sm" data-act="copy-amt" data-v="${esc(fmt(x.amount))}">${svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', 18)} Kopiuj</button>
+      ${isOpen() ? `<button class="btn sm okb" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.8)} Oddane</button>` : ''}
+    </div>
+  </section>`;
+}
+/** Karta osoby: imię w jednej linii, kwoty pod spodem. lines = [{v, cur}], total = bilans w zł (mały) */
+function balCard(m, lines, paid, share, totalPLN) {
+  const main = lines.find((l) => Math.abs(l.v) > 0.009) || lines[0];
+  const sumPLN = totalPLN != null ? totalPLN : main.v;
+  const cls = sumPLN > 0.009 ? 'pos' : sumPLN < -0.009 ? 'neg' : 'zero';
+  const word = sumPLN > 0.009 ? 'otrzyma' : sumPLN < -0.009 ? 'odda' : 'na zero';
+  return `<div class="balcard ${cls}">
+    <div class="bc-top">${avatar(m.id, 'md')}<span class="bc-name"><b>${esc(m.name)}${meTag(m.id)}</b><span class="bc-word">${word}${memberWeight(m) > 1 ? ' · para' : ''}</span></span></div>
+    <div class="bc-lines">${lines.map((l) => `<div class="bc-l ${l.v > 0.009 ? 'pos' : l.v < -0.009 ? 'neg' : ''}"><span>${l.cur === 'PLN' ? 'w złotówkach' : 'w ' + (l.cur === 'EUR' ? 'euro' : esc(l.cur))}</span><b>${l.v ? signed(l.v) : '0,00'}${NB}${esc(sym(l.cur))}</b></div>`).join('')}
+      ${totalPLN != null ? `<div class="bc-sum">razem po przeliczeniu <b>${signed(totalPLN)}${NB}zł</b></div>` : ''}</div>
+    <div class="bc-grid"><div><span>Zapłacili</span><b>${money(paid, 'PLN')}</b></div><div><span>Udział w kosztach</span><b>${money(share, 'PLN')}</b></div></div>
+  </div>`;
+}
 function viewSettle() {
   const t = S.trip;
-  const hasF = foreign() !== 'PLN';
-  const mode = hasF ? S.settleMode : 'pln';
-  const cur = mode === 'pln' ? null : mode;
-  const b = computeBalances(t, S.expenses, cur ? { currency: cur } : {});
-  const unit = cur || 'PLN';
-  const tr = settle(b.balance);
+  const f = foreign();
+  const hasF = f !== 'PLN';
+  const mode = hasF ? (S.settleMode === 'pln' ? 'pln' : 'split') : 'pln';
   const bAll = computeBalances(t, S.expenses);
   const done = S.expenses.filter((e) => e.type === 'transfer').sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
   const allTr = settle(bAll.balance).length;
-  const me = meId();
-  const other = (v) => unit === 'PLN' ? (hasF ? `≈ ${money(v / t.rate, foreign())}` : '') : `≈ ${money(v * t.rate, 'PLN')}`;
-  const arrow = '<svg class="xf-arr" width="56" height="22" viewBox="0 0 56 22" fill="none" aria-hidden="true"><path d="M2 11h48M42 4l8 7-8 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const person = (id, verb) => `<div class="xf-p">${avatar(id, 'lg')}<b>${esc(mNameFull(id))}${id === me ? ' <em>(Ty)</em>' : ''}</b><span>${verb}</span></div>`;
+  const plural = (n) => n + (n === 1 ? ' przelew' : n < 5 ? ' przelewy' : ' przelewów');
+  const settled = `<section class="xfer done"><div class="xf-ok">${ico.check}</div><b>Wszyscy są rozliczeni</b><span>Nikt nikomu nic nie oddaje.</span></section>`;
+  let body = '';
+  if (mode === 'split') {
+    const bF = computeBalances(t, S.expenses, { currency: f }), trF = settle(bF.balance);
+    const bP = computeBalances(t, S.expenses, { currency: 'PLN' }), trP = settle(bP.balance);
+    const trAll = settle(bAll.balance);
+    body = `
+    <p class="settle-note">Co płacone w ${f === 'EUR' ? 'euro' : esc(f)} – oddajecie w ${f === 'EUR' ? 'euro' : esc(f)}. Co w złotówkach – w złotówkach.</p>
+    ${!trF.length && !trP.length ? settled : ''}
+    ${trF.length ? `<div class="cur-head"><span class="cur-badge">${esc(sym(f))}</span><b>Do oddania w ${f === 'EUR' ? 'euro' : esc(f)}</b><span class="muted small">${plural(trF.length)}</span></div>${trF.map((x, i) => xferCard(x, f, i)).join('')}` : ''}
+    ${trP.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Do oddania w zł</b><span class="muted small">${plural(trP.length)}</span></div>${trP.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : ''}
+    <section class="sumpln">
+      <div class="sp-h">Podsumowanie w złotówkach</div>
+      ${trAll.length ? trAll.map((x) => `<div class="sp-r"><span>${esc(mNameFull(x.from))} → ${esc(mNameFull(x.to))}</span><b>${money(x.amount, 'PLN')}</b></div>`).join('') : '<div class="sp-r"><span>Wszyscy na zero</span><b>0,00 zł</b></div>'}
+      <div class="sp-r tot"><span>Wydatki razem (kurs ${fmtRate(t.rate)})</span><b>${money(bAll.total, 'PLN')}</b></div>
+    </section>
+    <div class="sec-title">Bilans uczestników</div>
+    <div class="balcards">${(t.members || []).map((m) => balCard(m,
+      [{ v: round2(bF.balance[m.id] || 0), cur: f }, { v: round2(bP.balance[m.id] || 0), cur: 'PLN' }],
+      bAll.paid[m.id] || 0, bAll.share[m.id] || 0, round2(bAll.balance[m.id] || 0))).join('')}</div>`;
+  } else {
+    const tr = settle(bAll.balance);
+    body = `
+    ${tr.length ? `<div class="cur-head"><span class="cur-badge pl">zł</span><b>Kto komu oddaje</b><span class="muted small">${plural(tr.length)}</span></div>${tr.map((x, i) => xferCard(x, 'PLN', i)).join('')}` : settled}
+    <div class="sec-title">Bilans uczestników</div>
+    <div class="balcards">${(t.members || []).map((m) => balCard(m, [{ v: round2(bAll.balance[m.id] || 0), cur: 'PLN' }], bAll.paid[m.id] || 0, bAll.share[m.id] || 0, null)).join('')}
+      <div class="bc-total"><span>Wydatki razem</span><b>${money(bAll.total, 'PLN')}</b></div></div>`;
+  }
   return `
   <main class="page tab-pad settle">
     ${pageHead('Rozliczenie')}
     ${hasF ? `<div class="seg">
-      <button class="${mode === 'pln' ? 'on' : ''}" data-act="settle-mode" data-v="pln">Razem w zł</button>
-      <button class="${mode === foreign() ? 'on' : ''}" data-act="settle-mode" data-v="${esc(foreign())}">Tylko ${esc(foreign())}</button>
-      <button class="${mode === 'PLN' ? 'on' : ''}" data-act="settle-mode" data-v="PLN">Tylko zł</button>
+      <button class="${mode === 'split' ? 'on' : ''}" data-act="settle-mode" data-v="split">Osobno ${esc(sym(f))} i zł</button>
+      <button class="${mode === 'pln' ? 'on' : ''}" data-act="settle-mode" data-v="pln">Wszystko w zł</button>
     </div>` : ''}
-
-    <div class="sec-title">Kto komu oddaje <span class="muted small">${tr.length ? tr.length + (tr.length === 1 ? ' przelew' : tr.length < 5 ? ' przelewy' : ' przelewów') : ''}</span></div>
-    ${tr.length ? tr.map((x, i) => `
-      <section class="xfer" style="animation-delay:${i * 80}ms">
-        <div class="xf-step">Przelew ${i + 1}</div>
-        <div class="xf-people">${person(x.from, 'oddaje')}<div class="xf-mid">${arrow}</div>${person(x.to, 'otrzymuje')}</div>
-        <div class="xf-amt">${money(x.amount, unit)}${other(x.amount) ? `<small>${other(x.amount)}</small>` : ''}</div>
-        <div class="xf-acts">
-          <button class="btn sm" data-act="copy-amt" data-v="${esc(fmt(x.amount))}">${svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', 18)} Kopiuj kwotę</button>
-          ${isOpen() ? `<button class="btn sm okb" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.8)} Oddane</button>` : ''}
-        </div>
-      </section>`).join('') : `<section class="xfer done"><div class="xf-ok">${ico.check}</div><b>Wszyscy są rozliczeni</b><span>Nikt nikomu nic nie oddaje.</span></section>`}
-
-    <div class="sec-title">Bilans uczestników</div>
-    <div class="balcards">
-      ${(t.members || []).map((m) => {
-        const v = round2(b.balance[m.id] || 0);
-        const cls = v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : 'zero';
-        const word = v > 0.009 ? 'otrzyma' : v < -0.009 ? 'odda' : 'na zero';
-        return `<div class="balcard ${cls}">
-          <div class="bc-top">${avatar(m.id, 'md')}<span class="grow"><b>${esc(m.name)}${m.id === me ? ' <em>(Ty)</em>' : ''}</b>${memberTag(m)}</span>
-            <span class="bc-v"><small>${word}</small>${v ? signed(v) : '0,00'} ${esc(sym(unit))}</span></div>
-          <div class="bc-grid"><div><span>${paidVerb(m) === 'zapłacili' ? 'Zapłacili' : 'Zapłacił(a)'}</span><b>${money(b.paid[m.id] || 0, unit)}</b></div>
-            <div><span>Udział w kosztach</span><b>${money(b.share[m.id] || 0, unit)}</b></div></div>
-        </div>`;
-      }).join('')}
-      <div class="bc-total"><span>Wydatki razem</span><b>${money(b.total, unit)}</b></div>
-    </div>
-
+    ${body}
     ${done.length ? `<div class="sec-title">Już oddane</div><div class="xlist">${done.map((e) => `
       <div class="paid-row">${avatar(e.payer, 'sm')}<span class="grow"><b>${esc(mNameFull(e.payer))} → ${esc(mNameFull(e.recipient))}</b><span>${fmtDate(e.date)}</span></span>
         <span class="v">${money(e.amount, e.currency)}</span>${isOpen() ? `<button class="link danger" data-act="undo-paid" data-id="${esc(e.id)}">Cofnij</button>` : ''}</div>`).join('')}</div>` : ''}
@@ -835,7 +860,7 @@ function donut(list, total) {
     return s;
   }).join('');
   return `<div class="donut"><svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="${R}" fill="none" stroke="var(--card2)" stroke-width="22"/>${segs}</svg>
-    <div class="c"><b>${fmt0(total)} zł</b><span>Razem</span></div></div>`;
+    <div class="c"><b>${fmt0(total)} zł</b><span>Razem</span></div></div>`;
 }
 function reportBody() {
   const t = S.trip;
@@ -849,18 +874,14 @@ function reportBody() {
           <div class="legend">${list.slice(0, 7).map((c) => `<div><i style="background:${c.color}"></i><span>${esc(c.name)}</span><em>${b.total ? Math.round((c.sum / b.total) * 1000) / 10 : 0}%</em></div>`).join('')}</div></div>` : '<div class="empty">Brak wydatków do pokazania.</div>'}
       </section>
       <div class="sec-title">Wydatki na osobę</div>
-      <section class="card"><div class="perperson">${(t.members || []).map((m) => `<div>${avatar(m.id, 'lg')}<span>${esc(m.name)}</span><b>${fmt(b.share[m.id] || 0)} zł</b></div>`).join('')}</div></section>`;
+      <section class="card"><div class="perperson">${(t.members || []).map((m) => `<div>${avatar(m.id, 'lg')}<span>${esc(m.name)}</span><b>${fmt(b.share[m.id] || 0)} zł</b></div>`).join('')}</div></section>`;
   } else if (S.repTab === 1) {
     const max = Math.max(1, ...list.map((c) => c.sum));
     body = list.length ? `<div class="list bars">${list.map((c) => `
       <div><span class="row" style="gap:10px"><span class="ei" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center">${iconSvg(c.key, 18, 'currentColor')}</span><b>${esc(c.name)}</b><span class="muted small">${c.n}×</span></span>
-        <b class="nowrap">${fmt(c.sum)} zł</b><span class="bar"><i style="width:${(c.sum / max) * 100}%;background:${c.color}"></i></span></div>`).join('')}</div>` : '<div class="empty">Brak wydatków.</div>';
+        <b class="nowrap">${fmt(c.sum)} zł</b><span class="bar"><i style="width:${(c.sum / max) * 100}%;background:${c.color}"></i></span></div>`).join('')}</div>` : '<div class="empty">Brak wydatków.</div>';
   } else {
-    body = `<div class="list">${(t.members || []).map((m) => {
-      const v = round2(b.balance[m.id] || 0);
-      return `<div class="who">${avatar(m.id)}<span class="n"><b>${esc(m.name)}</b><span>zapłacił(a) ${fmt(b.paid[m.id] || 0)} zł · udział ${fmt(b.share[m.id] || 0)} zł</span></span>
-        <span class="v ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : ''}">${signed(v)} zł</span></div>`;
-    }).join('')}</div>`;
+    body = `<div class="balcards">${(t.members || []).map((m) => balCard(m, [{ v: round2(b.balance[m.id] || 0), cur: 'PLN' }], b.paid[m.id] || 0, b.share[m.id] || 0, null)).join('')}</div>`;
   }
   return `
     <div class="seg swipe-tabs">${tabs.map((x, i) => `<button class="${S.repTab === i ? 'on' : ''}" data-act="rep-tab" data-v="${i}">${x}</button>`).join('')}</div>
@@ -881,7 +902,7 @@ function viewReportsNav() {
 }
 
 // ------------------------------------------------------------ ustawienia (globalne)
-const WSTYLES = [['navy', 'Granat'], ['dark', 'Grafit'], ['light', 'Jasny'], ['clear', 'Szkło'], ['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód']];
+const WSTYLES = [['navy', 'Ciemny'], ['dark', 'Grafit'], ['light', 'Jasny'], ['clear', 'Szkło'], ['blue', 'Niebieski'], ['violet', 'Fiolet'], ['teal', 'Morski'], ['sunset', 'Zachód']];
 function viewSettings() {
   const th = themeSetting();
   const ws = ls.get('wstyle', 'navy');
@@ -1056,7 +1077,7 @@ const amountValue = () => { const v = parseFloat((S.add.amount || '0').replace('
 function amountText() {
   const raw = S.add.amount || '0';
   const [i, d] = raw.split(',');
-  const int = Number(i || 0).toLocaleString('pl-PL').replace(/ /g, ' ');
+  const int = grp(Number(i || 0));
   return d !== undefined ? int + ',' + d : int;
 }
 function amountClass() { const n = amountText().length; return n > 10 ? 'xlong' : n > 7 ? 'long' : ''; }
@@ -1251,11 +1272,11 @@ function pushWidget() {
     style: ls.get('wstyle', 'navy'), code: t.id, title: t.title, closed: t.status === 'closed',
     foreign: foreign(), foreignSym: sym(foreign()),
     balanceLabel: me ? 'Twój bilans' : 'Koszt wyjazdu',
-    balanceText: me ? signed(bal) + ' zł' : fmt(b.total) + ' zł',
+    balanceText: me ? signed(bal) + ' zł' : fmt(b.total) + ' zł',
     balanceSign: me ? (bal > 0.009 ? 'pos' : bal < -0.009 ? 'neg' : 'zero') : 'zero',
     balanceHint: me ? (bal > 0.009 ? 'Inni oddadzą Ci tę kwotę' : bal < -0.009 ? 'Tyle musisz oddać' : 'Jesteś na zero') : '',
     recent, owe: oweData(b, me),
-    totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
+    totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
     count: S.expenses.length, lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
@@ -1275,17 +1296,17 @@ function reportHtml() {
   <div class="rep">
     <div class="rep-head">
       <div><h1>${esc(t.title)} · rozliczenie</h1>
-      <p>${esc(countryName(t.country))}${range ? ' · ' + range : ''} · ${totalWeight(t)} os. · kurs 1 ${esc(foreign())} = ${fmtRate(t.rate)} zł</p></div>
+      <p>${esc(countryName(t.country))}${range ? ' · ' + range : ''} · ${totalWeight(t)} os. · kurs 1 ${esc(foreign())} = ${fmtRate(t.rate)} zł</p></div>
       <span class="rep-status">${t.status === 'closed' ? 'ROZLICZONY' : 'W TRAKCIE'}</span>
     </div>
     <div class="rep-boxes">
-      <div><span>Koszt całego wyjazdu</span><b>${fmt(b.total)} zł</b></div>
-      <div><span>Na jedną osobę</span><b>${fmt(b.total / (totalWeight(t) || 1))} zł</b></div>
+      <div><span>Koszt całego wyjazdu</span><b>${fmt(b.total)} zł</b></div>
+      <div><span>Na jedną osobę</span><b>${fmt(b.total / (totalWeight(t) || 1))} zł</b></div>
       <div><span>Przelewy</span><b>${tr.length ? tr.length + ' do zrobienia' : 'wszystko oddane'}</b></div>
     </div>
     <h2>Bilans uczestników</h2>
     <table><thead><tr><th>Uczestnik</th><th class="r">Zapłacił</th><th class="r">Udział</th><th class="r">Bilans</th></tr></thead><tbody>
-      ${(t.members || []).map((m) => `<tr><td>${esc(m.name)} (${memberWeight(m)} os.)</td><td class="r">${fmt(b.paid[m.id])} zł</td><td class="r">${fmt(b.share[m.id])} zł</td><td class="r"><b>${signed(round2(b.balance[m.id]))} zł</b></td></tr>`).join('')}
+      ${(t.members || []).map((m) => `<tr><td>${esc(m.name)} (${memberWeight(m)} os.)</td><td class="r">${fmt(b.paid[m.id])} zł</td><td class="r">${fmt(b.share[m.id])} zł</td><td class="r"><b>${signed(round2(b.balance[m.id]))} zł</b></td></tr>`).join('')}
     </tbody></table>
     <div class="rep-cols">
       <div><h2>Przelewy</h2>
@@ -1294,7 +1315,7 @@ function reportHtml() {
         ${!tr.length && !done.length ? '<p>Brak przelewów.</p>' : ''}
       </div>
       <div><h2>Na co poszły pieniądze</h2>
-        ${catList.map(([k, v]) => `<div class="rep-cat"><span>${esc(k)}</span><i><em style="width:${(v / maxCat) * 100}%"></em></i><b>${fmt(v)} zł</b></div>`).join('')}
+        ${catList.map(([k, v]) => `<div class="rep-cat"><span>${esc(k)}</span><i><em style="width:${(v / maxCat) * 100}%"></em></i><b>${fmt(v)} zł</b></div>`).join('')}
       </div>
     </div>
     <h2>Lista wydatków</h2>
@@ -1450,13 +1471,13 @@ const actions = {
       if (n.meId) ls.set('me:' + code, n.meId);
       S.newTrip = null;
       go('#/t/' + code);
-      toast(rateSource === 'NBP' ? `Gotowe! Kurs NBP: ${fmtRate(rate)} zł` : 'Gotowe! Sprawdź kurs w ustawieniach wyjazdu', 3500);
+      toast(rateSource === 'NBP' ? `Gotowe! Kurs NBP: ${fmtRate(rate)} zł` : 'Gotowe! Sprawdź kurs w ustawieniach wyjazdu', 3500);
     } catch (e) { el.disabled = false; el.textContent = 'Utwórz wyjazd'; fail(e); }
   },
   'pick-me': (el) => { ls.set('me:' + S.trip.id, el.dataset.id); S.skipMe = false; if (S.q) S.q.payer = null; render(); },
   'skip-me': () => { S.skipMe = true; render(); },
   filter: (el) => { S.filter = el.dataset.v; render(); },
-  'settle-mode': (el) => { S.settleMode = el.dataset.v === 'pln' ? 'pln' : el.dataset.v; render(); },
+  'settle-mode': (el) => { S.settleMode = el.dataset.v === 'pln' ? 'pln' : 'split'; render(); },
   add: (el) => openAdd(el && el.dataset ? el.dataset.cur : undefined),
   'skip-me-off': () => { S.skipMe = false; render(); },
   edit: (el) => openEdit(el.dataset.id),
@@ -1470,10 +1491,17 @@ const actions = {
   'undo-paid': (el) => { if (confirm('Cofnąć oznaczenie przelewu?')) store.deleteExpense(S.trip.id, el.dataset.id).catch(fail); },
   'share-result': async () => {
     const t = S.trip, b = computeBalances(t, S.expenses), tr = settle(b.balance);
-    const lines = [`Rozliczenie: ${t.title}`, `Koszt wyjazdu: ${fmt(b.total)} zł (na osobę ${fmt(b.total / (totalWeight(t) || 1))} zł)`, ''];
-    if (tr.length) { lines.push('Kto komu oddaje:'); tr.forEach((x) => lines.push(`• ${mNameFull(x.from)} → ${mNameFull(x.to)}: ${money(x.amount, 'PLN')}`)); }
+    const lines = [`Rozliczenie: ${t.title}`, `Koszt wyjazdu: ${fmt(b.total)} zł (na osobę ${fmt(b.total / (totalWeight(t) || 1))} zł)`, ''];
+    const f = foreign();
+    if (f !== 'PLN' && S.settleMode !== 'pln') {
+      const trF = settle(computeBalances(t, S.expenses, { currency: f }).balance), trP = settle(computeBalances(t, S.expenses, { currency: 'PLN' }).balance);
+      if (trF.length) { lines.push(`Do oddania w ${f}:`); trF.forEach((x) => lines.push(`• ${mNameFull(x.from)} → ${mNameFull(x.to)}: ${money(x.amount, f)} (≈ ${money(x.amount * t.rate, 'PLN')})`)); lines.push(''); }
+      if (trP.length) { lines.push('Do oddania w złotówkach:'); trP.forEach((x) => lines.push(`• ${mNameFull(x.from)} → ${mNameFull(x.to)}: ${money(x.amount, 'PLN')}`)); lines.push(''); }
+      if (!trF.length && !trP.length) lines.push('Wszyscy są rozliczeni ✓');
+      else if (tr.length) lines.push(`Razem w zł: ${tr.map((x) => `${mNameFull(x.from)} → ${mNameFull(x.to)} ${money(x.amount, 'PLN')}`).join(', ')}`);
+    } else if (tr.length) { lines.push('Kto komu oddaje:'); tr.forEach((x) => lines.push(`• ${mNameFull(x.from)} → ${mNameFull(x.to)}: ${money(x.amount, 'PLN')}`)); }
     else lines.push('Wszyscy są rozliczeni ✓');
-    const text = lines.join('\n');
+    const text = lines.join('\n').replace(/\u00a0/g, ' ');
     if (navigator.share) { try { await navigator.share({ title: t.title, text }); } catch (e) {} } else copyText(text, 'Skopiowano rozliczenie');
   },
   pdf: () => makePdf(false),
@@ -1519,7 +1547,7 @@ const actions = {
   nbp: async (el) => {
     const cur = $('#st-currency').value;
     el.disabled = true;
-    try { const r = await fetchNbp(cur); $('#st-rate').value = r.rate; S.nbpDate = r.date; toast(`Kurs NBP z ${r.date}: ${fmtRate(r.rate)} zł. Zapisz ustawienia.`, 3500); }
+    try { const r = await fetchNbp(cur); $('#st-rate').value = r.rate; S.nbpDate = r.date; toast(`Kurs NBP z ${r.date}: ${fmtRate(r.rate)} zł. Zapisz ustawienia.`, 3500); }
     catch (e) { toast('Nie udało się pobrać kursu NBP – wpisz ręcznie'); }
     el.disabled = false;
   },
