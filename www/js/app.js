@@ -32,7 +32,7 @@ const ico = {
   down: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>',
   share: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg>',
   bksp: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>',
-  logo: '<svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#2457F5"/><path d="M40 37v-7a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v7" fill="none" stroke="#fff" stroke-width="5"/><rect x="24" y="36" width="52" height="40" rx="9" fill="#fff"/><path d="M50 42v28" stroke="#2457F5" stroke-width="4.5" stroke-linecap="round"/><circle cx="75" cy="27" r="11" fill="#FF8A3D" stroke="#2457F5" stroke-width="4"/></svg>'
+  logo: '<img src="icons/icon-192.png" width="40" height="40" alt="" style="border-radius:11px;display:block">'
 };
 
 let toastTimer = null;
