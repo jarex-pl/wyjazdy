@@ -1,7 +1,7 @@
 import { createStore, newId } from './store.js';
 import { computeBalances, settle, toPLN, round2, totalWeight, memberWeight } from './calc.js';
 import { COUNTRIES, CURRENCIES, DEFAULT_RATES, DEFAULT_CATEGORIES, sym, countryName, countryCurrency, iconKey, iconSvg, iconBg, iconColor } from './data.js';
-import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme } from './native.js';
+import { isNative, updateWidget, consumeWidgetAction, onBackButton, onResume, exitApp, setBarsTheme, setWidgetLead, removeWidgetTrip } from './native.js';
 import { APP_BUILD } from './version.js';
 import { artSvg, tripPhoto, findPhoto, creditHtml, fileToCoverData } from './cover.js';
 import { sceneHtml, globeLogo, showIntro } from './scene.js';
@@ -139,7 +139,10 @@ function shareCells(t, total) {
 function memberTag(m) { const w = memberWeight(m); return w === 2 ? '<span class="tag">PARA</span>' : w > 2 ? `<span class="tag">${w} OS.</span>` : ''; }
 const paidVerb = (m) => (memberWeight(m) > 1 ? 'zapłacili' : 'zapłacił(a)');
 
+const leadCode = () => ls.get('leadTrip', null);
 function forgetTrip(code) {
+  removeWidgetTrip(code);
+  if (leadCode() === code) ls.set('leadTrip', null);
   ls.set('history', ls.get('history', []).filter((x) => x.code !== code));
   ['me:', 'thumb:', 'thumbSig:', 'lastCur:'].forEach((k) => { try { localStorage.removeItem(k + code); } catch (e) {} });
   if (ls.get('lastTrip', null) === code) { const h = ls.get('history', []); ls.set('lastTrip', h[0] ? h[0].code : null); }
@@ -359,7 +362,7 @@ function tripCard(h, i) {
     <a class="tc-link" href="#/t/${esc(h.code)}">
       ${photoBox('hist:' + h.code, h.country, 'tc-ph')}</div>
       <span class="tc-body">
-        <span class="tc-name">${flagImg(h.country)}<b>${esc(h.title)}</b></span>
+        <span class="tc-name">${flagImg(h.country)}<b>${esc(h.title)}</b>${h.code === leadCode() ? '<i class="lead" title="Wiodący">★</i>' : ''}</span>
         ${meta[0] ? `<span class="tc-meta">${ico.cal}${esc(meta[0])}</span>` : ''}
         ${meta[1] ? `<span class="tc-meta">${ico.users}${esc(meta[1])}</span>` : ''}
         <b class="tc-amt">${h.total != null ? fmt(h.total) + ' zł' : '—'}</b>
@@ -374,7 +377,7 @@ function viewHome() {
   if (!hist.length) return viewWelcome();
   const upd = S.update;
   const f = S.homeFilter || 'all';
-  const cur = hist[0];
+  const cur = hist.find((h) => h.code === leadCode()) || hist[0];
   const list = hist.filter((h) => f === 'all' || (f === 'open' ? h.status !== 'closed' : h.status === 'closed'));
   const tab = (k, label) => `<button class="${f === k ? 'on' : ''}" data-act="home-filter" data-v="${k}" aria-pressed="${f === k}">${label}</button>`;
   return `
@@ -386,7 +389,7 @@ function viewHome() {
     <section class="feat">
       <a class="feat-top" href="#/t/${esc(cur.code)}">
         ${photoBox('hist:' + cur.code, cur.country, 'feat-ph')}<div class="shade"></div>
-          <span class="feat-tag">${cur.status === 'closed' ? 'Ostatni wyjazd' : 'Bieżący wyjazd'}</span>
+          <span class="feat-tag">${cur.code === leadCode() ? '★ Wiodący wyjazd' : cur.status === 'closed' ? 'Ostatni wyjazd' : 'Bieżący wyjazd'}</span>
           <svg class="feat-plane" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z" fill="#fff" transform="rotate(90 12 12)"/></svg>
           <span class="feat-in"><span class="feat-name">${flagImg(cur.country)}<b>${esc(cur.title)}</b></span>
             <span class="feat-sub">${esc([countryName(cur.country), homeDates(cur), homePeople(cur)].filter(Boolean).join(' · '))}</span></span>
@@ -418,6 +421,8 @@ function renderTripMenu(code) {
   <div class="picker tmenu" role="dialog" aria-modal="true" aria-label="${esc(h.title)}"><div class="grip"></div>
     <div class="tm-head">${photoBox('hist:' + h.code, h.country, 'tm-ph')}</div><span class="grow"><b>${esc(h.title)}</b><span>${esc([countryName(h.country), homeDates(h)].filter(Boolean).join(' · '))}</span></span></div>
     <a class="opt" href="#/t/${esc(h.code)}" data-act="tm-close-nav">${ico.chev}<span class="grow"><b>Otwórz wyjazd</b><span>Wydatki, rozliczenie, osoby</span></span></a>
+    ${h.code === leadCode() ? `<div class="opt on"><span class="star">★</span><span class="grow"><b>To jest wiodący wyjazd</b><span>Pokazywany na górze i w widżetach</span></span></div>`
+      : `<button class="opt" data-act="set-lead" data-code="${esc(h.code)}"><span class="star">☆</span><span class="grow"><b>Ustaw jako wiodący</b><span>Na górze ekranu głównego i w widżetach</span></span></button>`}
     <button class="opt" data-act="forget" data-code="${esc(h.code)}">${ico.close}<span class="grow"><b>Usuń z mojej listy</b><span>Znika tylko u Ciebie – inni dalej go widzą</span></span></button>
     ${h.admin !== false ? `<button class="opt danger" data-act="delete-trip-home" data-code="${esc(h.code)}">${ico.trash}<span class="grow"><b>Usuń cały wyjazd</b><span>U wszystkich uczestników, razem z wydatkami</span></span></button>` : ''}
     <button class="btn" data-act="tm-close">Anuluj</button>
@@ -692,7 +697,10 @@ function sortedExp(list) { return [...list].sort((a, c) => (c.date || '').locale
 function groupByDay(list) {
   const groups = [];
   for (const e of list) { const g = groups[groups.length - 1]; if (g && g.date === e.date) g.items.push(e); else groups.push({ date: e.date, items: [e] }); }
-  return groups.map((g) => `<div class="day">${esc(dayLabel(g.date || todayISO()))}</div><div class="list">${g.items.map(expenseRow).join('')}</div>`).join('');
+  return groups.map((g) => {
+    const sum = g.items.filter((e) => (e.type || 'shared') !== 'transfer').reduce((s, e) => s + toPLN(e, S.trip.rate), 0);
+    return `<div class="day"><span>${esc(dayLabel(g.date || todayISO()))}</span>${sum ? `<b>${fmt0(sum)} zł</b>` : ''}</div><div class="xlist">${g.items.map(expenseRow).join('')}</div>`;
+  }).join('');
 }
 
 function expenseSub(e) {
@@ -750,30 +758,48 @@ function viewSettle() {
   const done = S.expenses.filter((e) => e.type === 'transfer').sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
   const allTr = settle(bAll.balance).length;
   const me = meId();
+  const other = (v) => unit === 'PLN' ? (hasF ? `≈ ${money(v / t.rate, foreign())}` : '') : `≈ ${money(v * t.rate, 'PLN')}`;
+  const arrow = '<svg class="xf-arr" width="56" height="22" viewBox="0 0 56 22" fill="none" aria-hidden="true"><path d="M2 11h48M42 4l8 7-8 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const person = (id, verb) => `<div class="xf-p">${avatar(id, 'lg')}<b>${esc(mNameFull(id))}${id === me ? ' <em>(Ty)</em>' : ''}</b><span>${verb}</span></div>`;
   return `
-  <main class="page tab-pad">
+  <main class="page tab-pad settle">
     ${pageHead('Rozliczenie')}
     ${hasF ? `<div class="seg">
       <button class="${mode === 'pln' ? 'on' : ''}" data-act="settle-mode" data-v="pln">Razem w zł</button>
       <button class="${mode === foreign() ? 'on' : ''}" data-act="settle-mode" data-v="${esc(foreign())}">Tylko ${esc(foreign())}</button>
       <button class="${mode === 'PLN' ? 'on' : ''}" data-act="settle-mode" data-v="PLN">Tylko zł</button>
     </div>` : ''}
-    <div class="totc">
-      <div class="tr0"><span>Wydatki razem</span><b>${money(b.total, unit)}</b></div>
+
+    <div class="sec-title">Kto komu oddaje <span class="muted small">${tr.length ? tr.length + (tr.length === 1 ? ' przelew' : tr.length < 5 ? ' przelewy' : ' przelewów') : ''}</span></div>
+    ${tr.length ? tr.map((x, i) => `
+      <section class="xfer" style="animation-delay:${i * 80}ms">
+        <div class="xf-step">Przelew ${i + 1}</div>
+        <div class="xf-people">${person(x.from, 'oddaje')}<div class="xf-mid">${arrow}</div>${person(x.to, 'otrzymuje')}</div>
+        <div class="xf-amt">${money(x.amount, unit)}${other(x.amount) ? `<small>${other(x.amount)}</small>` : ''}</div>
+        <div class="xf-acts">
+          <button class="btn sm" data-act="copy-amt" data-v="${esc(fmt(x.amount))}">${svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', 18)} Kopiuj kwotę</button>
+          ${isOpen() ? `<button class="btn sm okb" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.8)} Oddane</button>` : ''}
+        </div>
+      </section>`).join('') : `<section class="xfer done"><div class="xf-ok">${ico.check}</div><b>Wszyscy są rozliczeni</b><span>Nikt nikomu nic nie oddaje.</span></section>`}
+
+    <div class="sec-title">Bilans uczestników</div>
+    <div class="balcards">
       ${(t.members || []).map((m) => {
         const v = round2(b.balance[m.id] || 0);
-        return `<div class="who">${avatar(m.id)}<span class="n"><b>${esc(m.name)}${m.id === me ? ' (Ty)' : ''}${memberTag(m)}</b><span>${paidVerb(m)} ${fmt0(b.paid[m.id] || 0)} · udział ${fmt0(b.share[m.id] || 0)}</span></span>
-          <span class="v ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : ''}">${signed(v)} ${esc(sym(unit))}</span></div>`;
+        const cls = v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : 'zero';
+        const word = v > 0.009 ? 'otrzyma' : v < -0.009 ? 'odda' : 'na zero';
+        return `<div class="balcard ${cls}">
+          <div class="bc-top">${avatar(m.id, 'md')}<span class="grow"><b>${esc(m.name)}${m.id === me ? ' <em>(Ty)</em>' : ''}</b>${memberTag(m)}</span>
+            <span class="bc-v"><small>${word}</small>${v ? signed(v) : '0,00'} ${esc(sym(unit))}</span></div>
+          <div class="bc-grid"><div><span>${paidVerb(m) === 'zapłacili' ? 'Zapłacili' : 'Zapłacił(a)'}</span><b>${money(b.paid[m.id] || 0, unit)}</b></div>
+            <div><span>Udział w kosztach</span><b>${money(b.share[m.id] || 0, unit)}</b></div></div>
+        </div>`;
       }).join('')}
+      <div class="bc-total"><span>Wydatki razem</span><b>${money(b.total, unit)}</b></div>
     </div>
-    <div class="sec-title">${tr.length ? 'Do oddania' : 'Wszyscy rozliczeni ✓'}</div>
-    ${tr.map((x) => `
-      <div class="tr2"><div class="x">${esc(mNameFull(x.from))}<span>→ ${esc(mNameFull(x.to))}</span></div>
-        <div class="m">${money(x.amount, unit)}${unit !== 'PLN' ? `<small>≈ ${money(x.amount * t.rate, 'PLN')}</small>` : ''}</div>
-        ${isOpen() ? `<button class="ok" data-act="mark-paid" data-from="${x.from}" data-to="${x.to}" data-amt="${x.amount}" data-cur="${unit}">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 17, 2.8)} Oddane</button>` : ''}
-      </div>`).join('')}
-    ${done.length ? `<div class="sec-title">Już oddane</div><div class="list">${done.map((e) => `
-      <div class="who">${avatar(e.payer, 'sm')}<span class="n"><b>${esc(mNameFull(e.payer))} → ${esc(mNameFull(e.recipient))}</b><span>${fmtDate(e.date)}</span></span>
+
+    ${done.length ? `<div class="sec-title">Już oddane</div><div class="xlist">${done.map((e) => `
+      <div class="paid-row">${avatar(e.payer, 'sm')}<span class="grow"><b>${esc(mNameFull(e.payer))} → ${esc(mNameFull(e.recipient))}</b><span>${fmtDate(e.date)}</span></span>
         <span class="v">${money(e.amount, e.currency)}</span>${isOpen() ? `<button class="link danger" data-act="undo-paid" data-id="${esc(e.id)}">Cofnij</button>` : ''}</div>`).join('')}</div>` : ''}
     <div class="btnrow">
       <button class="btn primary" data-act="share-result">${ico.share} Wyślij</button>
@@ -1231,7 +1257,7 @@ function pushWidget() {
     recent, owe: oweData(b, me),
     totalText: fmt0(b.total) + ' zł', perPersonText: fmt0(b.total / (totalWeight(t) || 1)) + ' zł',
     subtitle: [countryName(t.country), tripDates(), peopleLabel(t)].filter(Boolean).join(' · '),
-    count: S.expenses.length, ...widgetPhoto(t)
+    count: S.expenses.length, lead: !leadCode() || leadCode() === t.id, ...widgetPhoto(t)
   };
   updateWidget(S.widgetData);
 }
@@ -1356,6 +1382,13 @@ const actions = {
     if (!confirm(`Usunąć „${h ? h.title : code}” z Twojej listy?\n\nWyjazd zostanie u pozostałych uczestników. Wrócisz do niego, wpisując kod ${code}.`)) return;
     if (S.watching === code) stopWatching();
     forgetTrip(code); closePicker(); go('#/'); toast('Usunięto z listy');
+  },
+  'set-lead': (el) => {
+    const code = el.dataset.code;
+    ls.set('leadTrip', code); setWidgetLead(code); closePicker(); render();
+    const h = ls.get('history', []).find((x) => x.code === code);
+    toast(`Wiodący wyjazd: ${h ? h.title : code}${isNative ? ' · widżety pokazują go teraz' : ''}`, 3500);
+    if (isNative && S.watching !== code) go('#/t/' + code + '/dash');
   },
   'home-filter': (el) => { S.homeFilter = el.dataset.v; render(); },
   'trip-menu': (el) => renderTripMenu(el.dataset.code),
@@ -1698,10 +1731,12 @@ boot();
 if (!isNative && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 async function handleWidgetAction() {
-  const a = await consumeWidgetAction();
-  if (!a) return;
-  const last = ls.get('lastTrip', null);
+  const raw = await consumeWidgetAction();
+  if (!raw) return;
+  const [a, wcode] = String(raw).split('|');
+  const last = wcode || leadCode() || ls.get('lastTrip', null);
   if (!last) { toast('Najpierw otwórz albo utwórz wyjazd'); return; }
+  if (a === 'open') { if (S.route.code !== last) go('#/t/' + last + '/dash'); return; }
   const cur = a === 'PLN' ? 'PLN' : 'foreign';
   if (S.route.code === last && S.trip) { closeAdd(); quickCur(cur); return; }
   S.pendingAdd = cur;

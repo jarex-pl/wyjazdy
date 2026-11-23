@@ -9,6 +9,16 @@ export function updateWidget(data) {
   Widget.update(data).catch(() => {});
 }
 
+export function setWidgetLead(code) {
+  if (!Widget) return;
+  Widget.setCurrent({ code }).catch(() => {});
+}
+
+export function removeWidgetTrip(code) {
+  if (!Widget) return;
+  Widget.remove({ code }).catch(() => {});
+}
+
 export function clearWidget() {
   if (!Widget) return;
   Widget.clear().catch(() => {});

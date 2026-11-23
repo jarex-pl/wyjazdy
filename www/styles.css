@@ -674,3 +674,71 @@ body { background: var(--page-bg) fixed; }
   .scene *, .gorbit, .feat-plane, .feat, .tcard, .welcome *, .intro-in * { animation: none !important; }
   .sc-plane { display: none; }
 }
+
+/* ---------------- czytelność: pasek statusu, osobne karty ---------------- */
+body::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: var(--st); background: var(--bg); z-index: 45; pointer-events: none; }
+.code-big { font-size: 22px; white-space: normal; overflow-wrap: anywhere; letter-spacing: .5px; }
+.invite .grow { min-width: 160px; }
+
+/* lista wydatków: każda płatność to osobna karta */
+.day { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 14px 2px -4px; }
+.day b { font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--soft); font-weight: 700; white-space: nowrap; }
+.xlist { display: flex; flex-direction: column; gap: 8px; }
+.xlist .exp { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow); gap: 12px; min-height: 0; }
+[data-theme="dark"] .xlist .exp { background: linear-gradient(135deg, #16295A 0%, #122352 100%); border-color: rgba(125,180,255,.2); }
+.xlist .exp .t { font-size: 16px; }
+.xlist .exp .s { font-size: 13px; }
+.xlist .exp .a b { font-size: 16px; }
+
+/* rozliczenie: przelewy jako duże karty */
+.settle .sec-title { margin-top: 12px; }
+.xfer { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); animation: rise .5s cubic-bezier(.2,.8,.2,1) both; }
+[data-theme="dark"] .xfer { background: linear-gradient(145deg, #1F4FB8 0%, #16295A 70%); border-color: rgba(125,180,255,.35); }
+[data-theme="light"] .xfer { background: linear-gradient(145deg, #FFFFFF 0%, #EAF1FF 100%); border-color: rgba(31,99,230,.25); }
+.xf-step { align-self: flex-start; font-size: 11.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-ink); background: var(--gold-l); padding: 4px 10px; border-radius: 999px; }
+.xf-people { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 6px; }
+.xf-p { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
+.xf-p b { font-size: 15.5px; font-weight: 800; line-height: 1.2; overflow-wrap: break-word; hyphens: none; }
+.xf-p b em, .balcard em { font-style: normal; font-weight: 600; color: var(--muted); }
+.xf-p span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.xf-mid { padding-top: 16px; color: var(--goldA); }
+.xf-arr { display: block; animation: nudge 1.6s ease-in-out infinite; }
+@keyframes nudge { 0%, 100% { transform: translateX(-4px); opacity: .7; } 50% { transform: translateX(4px); opacity: 1; } }
+.xf-amt { text-align: center; font-size: 38px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+.xf-amt small { display: block; font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-top: 6px; }
+.xf-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.xf-acts .btn { min-height: 48px; font-size: 15px; border-radius: 14px; }
+.xf-acts .okb { background: linear-gradient(180deg, #2BD46B, #16A34A); color: #fff; border: 0; box-shadow: 0 8px 18px rgba(22,163,74,.3); }
+.xfer.done { align-items: center; text-align: center; gap: 6px; padding: 22px 16px; }
+.xfer.done b { font-size: 19px; font-weight: 800; }
+.xfer.done span { color: var(--muted); }
+.xf-ok { width: 54px; height: 54px; border-radius: 27px; background: linear-gradient(180deg, #2BD46B, #16A34A); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 8px var(--pos-l); margin-bottom: 6px; }
+
+/* bilans: karta na osobę / parę */
+.balcards { display: flex; flex-direction: column; gap: 10px; }
+.balcard { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--faint); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+.balcard.pos { border-left-color: var(--pos); } .balcard.neg { border-left-color: var(--neg); }
+.bc-top { display: flex; align-items: center; gap: 12px; }
+.bc-top b { display: block; font-size: 16.5px; font-weight: 800; line-height: 1.2; }
+.bc-top .tag { margin: 4px 0 0; }
+.bc-v { text-align: right; font-size: 18px; font-weight: 800; white-space: nowrap; flex: none; }
+.bc-v small { display: block; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.balcard.pos .bc-v { color: var(--pos); } .balcard.neg .bc-v { color: var(--neg); }
+.bc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bc-grid > div { background: var(--card2); border-radius: 12px; padding: 9px 11px; min-width: 0; }
+[data-theme="dark"] .bc-grid > div { background: rgba(8,20,51,.45); }
+.bc-grid span { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.bc-grid b { display: block; font-size: 15.5px; font-weight: 800; margin-top: 2px; overflow-wrap: anywhere; }
+.bc-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px; border-radius: 16px; border: 1px dashed var(--fieldline); }
+.bc-total span { color: var(--muted); font-weight: 600; }
+.bc-total b { font-size: 19px; font-weight: 800; }
+.paid-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.paid-row b { display: block; font-size: 14.5px; font-weight: 700; }
+.paid-row .grow > span { display: block; font-size: 12.5px; color: var(--muted); }
+.paid-row .v { font-weight: 800; white-space: nowrap; color: var(--pos); }
+
+/* wiodący wyjazd */
+.tc-name .lead { font-style: normal; color: #FBBF24; font-size: 16px; flex: none; }
+.opt .star { width: 24px; text-align: center; font-size: 20px; color: #FBBF24; flex: none; }
+.seg button { white-space: nowrap; padding: 0 6px; font-size: 15px; }
+@media (max-width: 360px) { .seg button { font-size: 14px; } .xf-amt { font-size: 32px; } }

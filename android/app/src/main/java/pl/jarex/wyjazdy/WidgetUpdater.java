@@ -15,6 +15,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /** Rysuje oba widżety na podstawie danych zapisanych przez aplikację. */
 public final class WidgetUpdater {
@@ -22,6 +26,9 @@ public final class WidgetUpdater {
     static final String PREFS = "wyjazdy_widget";
     static final String KEY_DATA = "data";
     static final String EXTRA_ADD = "pl.jarex.wyjazdy.ADD";
+    static final String KEY_TRIPS = "trips";
+    static final String KEY_CURRENT = "current";
+    static final String ACTION_NEXT = "pl.jarex.wyjazdy.NEXT_TRIP";
 
     private static final int[] ROW_IDS = {R.id.row1, R.id.row2, R.id.row3};
     private static final int[] ROW_TITLE = {R.id.row1_title, R.id.row2_title, R.id.row3_title};
@@ -77,10 +84,68 @@ public final class WidgetUpdater {
     private static void bg(RemoteViews v, int id, int res) { v.setInt(id, "setBackgroundResource", res); }
 
 
+    /** Dane wszystkich zapamiętanych wyjazdów: kod → dane widżetu. */
+    static JSONObject readTrips(Context ctx) {
+        String raw = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_TRIPS, null);
+        if (raw == null) return new JSONObject();
+        try { return new JSONObject(raw); } catch (Exception e) { return new JSONObject(); }
+    }
+
+    static void writeTrips(Context ctx, JSONObject trips) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_TRIPS, trips.toString()).apply();
+    }
+
+    static List<String> tripCodes(Context ctx) {
+        List<String> codes = new ArrayList<>();
+        Iterator<String> it = readTrips(ctx).keys();
+        while (it.hasNext()) codes.add(it.next());
+        Collections.sort(codes);
+        return codes;
+    }
+
+    static String currentCode(Context ctx) {
+        String c = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_CURRENT, "");
+        JSONObject trips = readTrips(ctx);
+        if (c != null && trips.has(c)) return c;
+        List<String> codes = tripCodes(ctx);
+        return codes.isEmpty() ? "" : codes.get(0);
+    }
+
+    static void setCurrent(Context ctx, String code) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_CURRENT, code).apply();
+    }
+
+    /** Przełącza widżety na następny zapamiętany wyjazd. */
+    static void nextTrip(Context ctx) {
+        List<String> codes = tripCodes(ctx);
+        if (codes.size() < 2) return;
+        int i = codes.indexOf(currentCode(ctx));
+        setCurrent(ctx, codes.get((i + 1) % codes.size()));
+        updateAll(ctx);
+    }
+
     static JSONObject readData(Context ctx) {
+        String code = currentCode(ctx);
+        if (!code.isEmpty()) {
+            JSONObject d = readTrips(ctx).optJSONObject(code);
+            if (d != null) return d;
+        }
         String raw = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_DATA, null);
         if (raw == null) return null;
         try { return new JSONObject(raw); } catch (Exception e) { return null; }
+    }
+
+    /** „⇄ 1/2” gdy zapamiętano kilka wyjazdów, inaczej pusty tekst. */
+    static String switchMark(Context ctx) {
+        List<String> codes = tripCodes(ctx);
+        if (codes.size() < 2) return "";
+        return "⇄ " + (codes.indexOf(currentCode(ctx)) + 1) + "/" + codes.size();
+    }
+
+    static PendingIntent switchIntent(Context ctx, int requestCode) {
+        Intent i = new Intent(ctx, TripWidget.class);
+        i.setAction(ACTION_NEXT);
+        return PendingIntent.getBroadcast(ctx, requestCode, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static void updateAll(Context ctx) {
@@ -95,14 +160,16 @@ public final class WidgetUpdater {
         for (int id : tripIds) updateTrip(ctx, mgr, id);
     }
 
-    static File photoFile(Context ctx) { return new File(ctx.getFilesDir(), "widget_photo.jpg"); }
+    static File photoFile(Context ctx, String code) {
+        return new File(ctx.getFilesDir(), "widget_photo_" + code.replaceAll("[^A-Za-z0-9-]", "_") + ".jpg");
+    }
 
     static void updateTrip(Context ctx, AppWidgetManager mgr, int widgetId) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_trip);
         JSONObject d = readData(ctx);
         v.setOnClickPendingIntent(R.id.trip_root, openApp(ctx, null, 400));
         Bitmap photo = null;
-        File f = photoFile(ctx);
+        File f = photoFile(ctx, currentCode(ctx));
         if (d != null && f.exists()) {
             try { photo = BitmapFactory.decodeFile(f.getAbsolutePath()); } catch (Throwable e) { photo = null; }
         }
@@ -117,7 +184,9 @@ public final class WidgetUpdater {
             return;
         }
         boolean closed = d.optBoolean("closed", false);
-        v.setTextViewText(R.id.trip_chip, closed ? "WYJAZD ROZLICZONY" : "BIEŻĄCY WYJAZD");
+        String mark = switchMark(ctx);
+        v.setTextViewText(R.id.trip_chip, (mark.isEmpty() ? "" : mark + "  ·  ") + (closed ? "ROZLICZONY" : "BIEŻĄCY WYJAZD"));
+        if (!mark.isEmpty()) v.setOnClickPendingIntent(R.id.trip_chip, switchIntent(ctx, 402));
         v.setTextViewText(R.id.trip_name, d.optString("title", "Wyjazd"));
         v.setTextViewText(R.id.trip_sub, d.optString("subtitle", ""));
         v.setViewVisibility(R.id.trip_stats, View.VISIBLE);
@@ -140,9 +209,11 @@ public final class WidgetUpdater {
 
     static PendingIntent openApp(Context ctx, String add, int requestCode) {
         Intent i = new Intent(ctx, MainActivity.class);
-        i.setAction(add == null ? Intent.ACTION_MAIN : "pl.jarex.wyjazdy.ACTION_ADD_" + add);
+        String code = currentCode(ctx);
+        String act = (add == null ? "open" : add) + "|" + code;
+        i.setAction("pl.jarex.wyjazdy.ACTION_" + act);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        if (add != null) i.putExtra(EXTRA_ADD, add);
+        if (!code.isEmpty() || add != null) i.putExtra(EXTRA_ADD, act);
         return PendingIntent.getActivity(ctx, requestCode, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
@@ -171,7 +242,9 @@ public final class WidgetUpdater {
             return;
         }
         boolean closed = d.optBoolean("closed", false);
-        v.setTextViewText(R.id.trip_title, d.optString("title", "Wyjazd"));
+        String sw = switchMark(ctx);
+        v.setTextViewText(R.id.trip_title, d.optString("title", "Wyjazd") + (sw.isEmpty() ? "" : "   " + sw));
+        if (!sw.isEmpty()) v.setOnClickPendingIntent(R.id.trip_title, switchIntent(ctx, 103));
         v.setTextViewText(R.id.balance_label, d.optString("balanceLabel", "Twój bilans"));
         v.setTextViewText(R.id.balance_value, d.optString("balanceText", "0,00 zł"));
         String sign = d.optString("balanceSign", "zero");
@@ -223,7 +296,9 @@ public final class WidgetUpdater {
             v.setTextViewText(R.id.owe_amount, "");
             v.setTextViewText(R.id.owe_extra, "");
         } else {
-            v.setTextViewText(R.id.owe_title, o.optString("title", "Rozliczenie"));
+            String sw = switchMark(ctx);
+            v.setTextViewText(R.id.owe_title, o.optString("title", "Rozliczenie") + (sw.isEmpty() ? "" : "  " + sw));
+            if (!sw.isEmpty()) v.setOnClickPendingIntent(R.id.owe_title, switchIntent(ctx, 301));
             v.setTextViewText(R.id.owe_who, o.optString("who", ""));
             v.setTextViewText(R.id.owe_amount, o.optString("amount", ""));
             String sign = o.optString("sign", "zero");
@@ -243,7 +318,9 @@ public final class WidgetUpdater {
         v.setTextColor(R.id.quick_title, st.title);
         String foreign = d != null ? d.optString("foreign", "EUR") : "EUR";
         String foreignSym = d != null ? d.optString("foreignSym", "€") : "€";
-        v.setTextViewText(R.id.quick_title, d != null ? d.optString("title", "Wyjazdy") : "Wyjazdy");
+        String sw = switchMark(ctx);
+        v.setTextViewText(R.id.quick_title, (d != null ? d.optString("title", "Wyjazdy") : "Wyjazdy") + (sw.isEmpty() ? "" : "  " + sw));
+        if (!sw.isEmpty()) v.setOnClickPendingIntent(R.id.quick_title, switchIntent(ctx, 203));
         if ("PLN".equals(foreign)) {
             v.setViewVisibility(R.id.quick_foreign, View.GONE);
         } else {

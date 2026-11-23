@@ -19,6 +19,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import org.json.JSONObject;
+
 /**
  * Most między aplikacją (JavaScript) a widżetami na ekranie głównym.
  * JS wywołuje update({...}) przy każdej zmianie danych wyjazdu.
@@ -33,31 +35,71 @@ public class WidgetBridge extends Plugin {
     public void update(PluginCall call) {
         JSObject data = call.getData();
         Context ctx = getContext();
-        SharedPreferences prefs = ctx.getSharedPreferences(WidgetUpdater.PREFS, Context.MODE_PRIVATE);
+        String code = data.optString("code", "");
         String photoKey = data.optString("photoKey", "");
         String photoUrl = data.optString("photoUrl", "");
         String photoData = data.optString("photoData", "");
+        boolean lead = data.optBoolean("lead", false);
         data.remove("photoData");
+        data.remove("lead");
+        SharedPreferences prefs = ctx.getSharedPreferences(WidgetUpdater.PREFS, Context.MODE_PRIVATE);
         prefs.edit().putString(WidgetUpdater.KEY_DATA, data.toString()).apply();
+        if (!code.isEmpty()) {
+            JSONObject trips = WidgetUpdater.readTrips(ctx);
+            try { trips.put(code, new JSONObject(data.toString())); } catch (Exception e) { /* pomiń */ }
+            WidgetUpdater.writeTrips(ctx, trips);
+            if (lead || WidgetUpdater.currentCode(ctx).isEmpty()) WidgetUpdater.setCurrent(ctx, code);
+        }
         WidgetUpdater.updateAll(ctx);
         call.resolve();
-        String oldKey = prefs.getString(PHOTO_KEY, "");
+        if (code.isEmpty()) return;
+        String oldKey = prefs.getString(PHOTO_KEY + code, "");
         if (photoKey.isEmpty()) {
             if (!oldKey.isEmpty()) {
-                WidgetUpdater.photoFile(ctx).delete();
-                prefs.edit().remove(PHOTO_KEY).apply();
+                WidgetUpdater.photoFile(ctx, code).delete();
+                prefs.edit().remove(PHOTO_KEY + code).apply();
                 WidgetUpdater.updateAll(ctx);
             }
         } else if (!photoKey.equals(oldKey)) {
             final Context app = ctx.getApplicationContext();
-            new Thread(() -> loadPhoto(app, photoKey, photoUrl, photoData)).start();
+            new Thread(() -> loadPhoto(app, code, photoKey, photoUrl, photoData)).start();
         }
+    }
+
+    /** Wyjazd wiodący: ten pokazują widżety. */
+    @PluginMethod
+    public void setCurrent(PluginCall call) {
+        String code = call.getString("code", "");
+        Context ctx = getContext();
+        if (code != null && !code.isEmpty() && WidgetUpdater.readTrips(ctx).has(code)) {
+            WidgetUpdater.setCurrent(ctx, code);
+            WidgetUpdater.updateAll(ctx);
+        }
+        call.resolve();
+    }
+
+    /** Usunięty wyjazd znika też z widżetów. */
+    @PluginMethod
+    public void remove(PluginCall call) {
+        String code = call.getString("code", "");
+        Context ctx = getContext();
+        if (code != null && !code.isEmpty()) {
+            JSONObject trips = WidgetUpdater.readTrips(ctx);
+            trips.remove(code);
+            WidgetUpdater.writeTrips(ctx, trips);
+            WidgetUpdater.photoFile(ctx, code).delete();
+            SharedPreferences prefs = ctx.getSharedPreferences(WidgetUpdater.PREFS, Context.MODE_PRIVATE);
+            prefs.edit().remove(PHOTO_KEY + code).apply();
+            if (trips.length() == 0) prefs.edit().remove(WidgetUpdater.KEY_DATA).remove(WidgetUpdater.KEY_CURRENT).apply();
+            WidgetUpdater.updateAll(ctx);
+        }
+        call.resolve();
     }
 
     static final String PHOTO_KEY = "photoKey";
 
     /** Pobiera zdjęcie miejsca (albo dekoduje własne), przycina do proporcji widżetu i zapisuje w pamięci aplikacji. */
-    static void loadPhoto(Context ctx, String key, String url, String base64) {
+    static void loadPhoto(Context ctx, String code, String key, String url, String base64) {
         try {
             byte[] bytes;
             if (!base64.isEmpty()) {
@@ -93,11 +135,11 @@ public class WidgetBridge extends Plugin {
             if (ch > h) { ch = h; cw = h * 2; }
             Bitmap crop = Bitmap.createBitmap(src, (w - cw) / 2, (h - ch) / 2, cw, ch);
             Bitmap out = cw > 720 ? Bitmap.createScaledBitmap(crop, 720, 360, true) : crop;
-            File f = WidgetUpdater.photoFile(ctx);
+            File f = WidgetUpdater.photoFile(ctx, code);
             FileOutputStream fos = new FileOutputStream(f);
             out.compress(Bitmap.CompressFormat.JPEG, 85, fos);
             fos.close();
-            ctx.getSharedPreferences(WidgetUpdater.PREFS, Context.MODE_PRIVATE).edit().putString(PHOTO_KEY, key).apply();
+            ctx.getSharedPreferences(WidgetUpdater.PREFS, Context.MODE_PRIVATE).edit().putString(PHOTO_KEY + code, key).apply();
             WidgetUpdater.updateAll(ctx);
         } catch (Throwable e) {
             // brak internetu albo zły plik – widżet zostaje z granatowym tłem
