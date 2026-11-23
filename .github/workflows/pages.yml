@@ -25,7 +25,7 @@ jobs:
       - name: Numer wersji
         run: echo "export const APP_BUILD = ${{ github.run_number }};" > www/js/version.js
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: www
       - id: deployment
